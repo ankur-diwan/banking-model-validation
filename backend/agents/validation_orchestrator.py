@@ -8,8 +8,8 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from loguru import logger
 
-from ..wxo.watsonx_client import WatsonxClient
-from ..data_generators.scorecard_data_generator import ScorecardDataGenerator
+from wxo.watsonx_client import WatsonxClient
+from data_generators.scorecard_data_generator import ScorecardDataGenerator
 
 
 class ValidationOrchestratorAgent:

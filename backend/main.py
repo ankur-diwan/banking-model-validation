@@ -13,12 +13,12 @@ import os
 import asyncio
 import json
 
-from .wxo.watsonx_client import WatsonxClient
-from .watsonx.governance_client import WatsonxGovernanceClient
-from .wxo.orchestrate_client import WatsonxOrchestrateClient
-from .agents.validation_orchestrator import ValidationOrchestratorAgent
-from .agents.mlops_agent import MLOpsAgent
-from .validation.document_generator import SR117DocumentGenerator
+from wxo.watsonx_client import WatsonxClient
+from watsonx.governance_client import WatsonxGovernanceClient
+from wxo.orchestrate_client import WatsonxOrchestrateClient
+from agents.validation_orchestrator import ValidationOrchestratorAgent
+from agents.mlops_agent import MLOpsAgent
+from validation.document_generator import SR117DocumentGenerator
 
 # Initialize FastAPI app
 app = FastAPI(

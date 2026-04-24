@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from ..wxo.watsonx_client import WatsonxClient
-from ..data_generators.scorecard_data_generator import ScorecardDataGenerator
+from wxo.watsonx_client import WatsonxClient
+from data_generators.scorecard_data_generator import ScorecardDataGenerator
 
 
 class IndependentValidationAgent:

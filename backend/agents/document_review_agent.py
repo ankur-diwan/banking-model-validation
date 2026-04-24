@@ -8,7 +8,7 @@ from datetime import datetime
 from loguru import logger
 import re
 
-from ..wxo.watsonx_client import WatsonxClient
+from wxo.watsonx_client import WatsonxClient
 
 
 class DocumentReviewAgent:

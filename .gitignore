@@ -59,3 +59,18 @@ frontend/build/
 # Temporary files
 /tmp/
 *.tmp
+
+# Docker
+*.dockerignore
+
+# Code Engine
+.ce/
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage
+.coverage
+htmlcov/

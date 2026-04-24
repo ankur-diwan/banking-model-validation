@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 from loguru import logger
 import json
 
-from ..watsonx.governance_client import WatsonxGovernanceClient
-from ..wxo.watsonx_client import WatsonxClient
+from watsonx.governance_client import WatsonxGovernanceClient
+from wxo.watsonx_client import WatsonxClient
 
 
 class MLOpsAgent:
