@@ -191,7 +191,7 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Validate data quality across all datasets"""
         
-        from ..validation.data_quality_validator import DataQualityValidator
+        from validation.data_quality_validator import DataQualityValidator
         
         validator = DataQualityValidator()
         
@@ -211,7 +211,7 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Assess model conceptual soundness"""
         
-        from ..validation.conceptual_soundness_validator import ConceptualSoundnessValidator
+        from validation.conceptual_soundness_validator import ConceptualSoundnessValidator
         
         validator = ConceptualSoundnessValidator(self.watsonx)
         
@@ -226,7 +226,7 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Validate model performance metrics"""
         
-        from ..validation.performance_validator import PerformanceValidator
+        from validation.performance_validator import PerformanceValidator
         
         validator = PerformanceValidator()
         
@@ -246,7 +246,7 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Test model assumptions"""
         
-        from ..validation.assumptions_validator import AssumptionsValidator
+        from validation.assumptions_validator import AssumptionsValidator
         
         validator = AssumptionsValidator()
         
@@ -263,7 +263,7 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Analyze model stability"""
         
-        from ..validation.stability_validator import StabilityValidator
+        from validation.stability_validator import StabilityValidator
         
         validator = StabilityValidator()
         
@@ -308,7 +308,7 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Check SR 11-7 compliance"""
         
-        from ..validation.compliance_checker import ComplianceChecker
+        from validation.compliance_checker import ComplianceChecker
         
         checker = ComplianceChecker()
         
