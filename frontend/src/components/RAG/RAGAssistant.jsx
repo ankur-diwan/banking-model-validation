@@ -23,7 +23,7 @@ import {
   ThumbDown as ThumbDownIcon,
   ContentCopy as CopyIcon
 } from '@mui/icons-material';
-import ReactMarkdown from 'react-markdown';
+// import ReactMarkdown from 'react-markdown'; // TODO: Install react-markdown package
 
 /**
  * RAG Assistant - AI-powered documentation assistant using watsonx.ai
@@ -158,7 +158,9 @@ const RAGAssistant = ({ context = null }) => {
                     }}
                   >
                     <CardContent>
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {message.content}
+                      </Typography>
                       
                       {message.sources && (
                         <Box sx={{ mt: 2 }}>

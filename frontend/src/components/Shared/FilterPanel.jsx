@@ -26,9 +26,10 @@ import {
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon
 } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+// TODO: Install @mui/x-date-pickers package to enable date picker
+// import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+// import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 /**
  * Reusable filter panel component with various filter types
@@ -142,44 +143,44 @@ const FilterPanel = ({
 
       case 'date':
         return (
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-              label={filter.label}
-              value={value || null}
-              onChange={(newValue) => handleChange(filter.id, newValue)}
-              renderInput={(params) => (
-                <TextField {...params} fullWidth size="small" />
-              )}
-            />
-          </LocalizationProvider>
+          <TextField
+            label={filter.label}
+            type="date"
+            value={value || ''}
+            onChange={(e) => handleChange(filter.id, e.target.value)}
+            fullWidth
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            helperText="Date picker requires @mui/x-date-pickers package"
+          />
         );
 
       case 'daterange':
         return (
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <DatePicker
-                label={`${filter.label} From`}
-                value={value?.from || null}
-                onChange={(newValue) =>
-                  handleChange(filter.id, { ...value, from: newValue })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} fullWidth size="small" />
-                )}
-              />
-              <DatePicker
-                label={`${filter.label} To`}
-                value={value?.to || null}
-                onChange={(newValue) =>
-                  handleChange(filter.id, { ...value, to: newValue })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} fullWidth size="small" />
-                )}
-              />
-            </Box>
-          </LocalizationProvider>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              label={`${filter.label} From`}
+              type="date"
+              value={value?.from || ''}
+              onChange={(e) =>
+                handleChange(filter.id, { ...value, from: e.target.value })
+              }
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label={`${filter.label} To`}
+              type="date"
+              value={value?.to || ''}
+              onChange={(e) =>
+                handleChange(filter.id, { ...value, to: e.target.value })
+              }
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
         );
 
       case 'range':

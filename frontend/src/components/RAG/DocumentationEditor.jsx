@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Typography,
-  Button,
   CircularProgress
 } from '@mui/material';
 import { RichTextEditor, Button } from '../Shared';

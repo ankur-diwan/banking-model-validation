@@ -17,7 +17,7 @@ import {
   Refresh as RefreshIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
-import html2canvas from 'html2canvas';
+// import html2canvas from 'html2canvas'; // TODO: Install html2canvas package
 
 /**
  * Reusable chart container with consistent styling, export, and fullscreen capabilities
@@ -60,6 +60,9 @@ const ChartContainer = ({
   const handleExportPNG = async () => {
     if (chartRef.current) {
       try {
+        // TODO: Install html2canvas package to enable image export
+        alert('Image export feature requires html2canvas package. Please install it first.');
+        /*
         const canvas = await html2canvas(chartRef.current, {
           backgroundColor: '#ffffff',
           scale: 2
@@ -68,6 +71,7 @@ const ChartContainer = ({
         link.download = `${title || 'chart'}_${new Date().toISOString()}.png`;
         link.href = canvas.toDataURL();
         link.click();
+        */
       } catch (error) {
         console.error('Error exporting chart:', error);
       }
