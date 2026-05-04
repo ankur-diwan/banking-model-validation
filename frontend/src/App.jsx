@@ -82,7 +82,9 @@ function App() {
 
   const fetchValidationStatus = async () => {
     try {
+      console.log('Fetching validation status for:', validationId);
       const response = await axios.get(`${API_BASE_URL}/api/v1/validate/${validationId}`);
+      console.log('Validation status:', response.data);
       setValidationStatus(response.data);
       
       if (response.data.status === 'completed') {
@@ -90,6 +92,7 @@ function App() {
       }
     } catch (err) {
       console.error('Failed to fetch validation status:', err);
+      setError(`Failed to fetch validation status: ${err.message}`);
     }
   };
 
@@ -133,16 +136,19 @@ function App() {
     setError(null);
     
     try {
+      console.log('Starting validation with config:', modelConfig);
       const response = await axios.post(`${API_BASE_URL}/api/v1/validate`, {
         model_config: modelConfig,
         generate_document: true,
         register_governance: true
       });
       
+      console.log('Validation started:', response.data);
       setValidationId(response.data.validation_id);
       handleNext();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to start validation');
+      console.error('Validation start error:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to start validation');
     } finally {
       setLoading(false);
     }
