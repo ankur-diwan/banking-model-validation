@@ -700,6 +700,254 @@ async def get_custom_test_results(test_id: str):
     }
 
 
+# ==================== Document Upload Endpoints ====================
+
+from fastapi import UploadFile, File
+from validation.document_analyzer import DocumentAnalyzer
+import shutil
+from pathlib import Path
+
+# Initialize document analyzer
+document_analyzer = DocumentAnalyzer()
+
+# Create uploads directory
+UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Store uploaded documents metadata
+uploaded_documents = {}
+
+
+@app.post("/api/v1/documents/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    model_id: Optional[str] = None,
+    document_type: Optional[str] = None
+):
+    """
+    Upload and analyze a document (PDF, DOCX, or CSV)
+    
+    Args:
+        file: The file to upload
+        model_id: Optional model ID to associate with the document
+        document_type: Optional document type (e.g., 'model_documentation', 'validation_report')
+    
+    Returns:
+        Document metadata and analysis results
+    """
+    try:
+        # Validate file
+        validation_result = document_analyzer.validate_file(file.filename, file.size)
+        if not validation_result["valid"]:
+            raise HTTPException(status_code=400, detail=validation_result["error"])
+        
+        # Generate unique document ID
+        doc_id = f"DOC_{datetime.utcnow().timestamp()}"
+        
+        # Save file
+        file_path = UPLOAD_DIR / f"{doc_id}_{file.filename}"
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Analyze document
+        analysis = document_analyzer.analyze_document(str(file_path))
+        
+        # Extract metadata
+        metadata = document_analyzer.extract_metadata(str(file_path))
+        
+        # Store document info
+        doc_info = {
+            "document_id": doc_id,
+            "filename": file.filename,
+            "file_path": str(file_path),
+            "file_size": file.size,
+            "file_type": validation_result["file_type"],
+            "model_id": model_id,
+            "document_type": document_type,
+            "uploaded_at": datetime.utcnow().isoformat(),
+            "metadata": metadata,
+            "analysis": analysis
+        }
+        
+        uploaded_documents[doc_id] = doc_info
+        
+        # Broadcast update
+        await broadcast_update({
+            "type": "document_uploaded",
+            "data": {
+                "document_id": doc_id,
+                "filename": file.filename,
+                "analysis_summary": {
+                    "sr_11_7_coverage": analysis.get("sr_11_7_sections", {}).get("overall_coverage", 0),
+                    "sections_found": len(analysis.get("sr_11_7_sections", {}).get("sections_found", [])),
+                    "model_info_extracted": bool(analysis.get("model_info"))
+                }
+            }
+        })
+        
+        return {
+            "success": True,
+            "document_id": doc_id,
+            "filename": file.filename,
+            "file_type": validation_result["file_type"],
+            "analysis": analysis,
+            "metadata": metadata
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading document: {str(e)}")
+
+
+@app.get("/api/v1/documents")
+async def list_documents(
+    model_id: Optional[str] = None,
+    document_type: Optional[str] = None
+):
+    """
+    List all uploaded documents
+    
+    Args:
+        model_id: Filter by model ID
+        document_type: Filter by document type
+    
+    Returns:
+        List of documents with metadata
+    """
+    try:
+        documents = list(uploaded_documents.values())
+        
+        # Apply filters
+        if model_id:
+            documents = [d for d in documents if d.get("model_id") == model_id]
+        if document_type:
+            documents = [d for d in documents if d.get("document_type") == document_type]
+        
+        # Return summary (without full analysis)
+        return {
+            "documents": [
+                {
+                    "document_id": d["document_id"],
+                    "filename": d["filename"],
+                    "file_type": d["file_type"],
+                    "file_size": d["file_size"],
+                    "model_id": d.get("model_id"),
+                    "document_type": d.get("document_type"),
+                    "uploaded_at": d["uploaded_at"],
+                    "sr_11_7_coverage": d["analysis"].get("sr_11_7_sections", {}).get("overall_coverage", 0)
+                }
+                for d in documents
+            ],
+            "total": len(documents)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/documents/{document_id}")
+async def get_document(document_id: str):
+    """
+    Get document details and analysis
+    
+    Args:
+        document_id: Document ID
+    
+    Returns:
+        Complete document information including analysis
+    """
+    try:
+        if document_id not in uploaded_documents:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        return uploaded_documents[document_id]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/v1/documents/{document_id}")
+async def delete_document(document_id: str):
+    """
+    Delete an uploaded document
+    
+    Args:
+        document_id: Document ID
+    
+    Returns:
+        Success message
+    """
+    try:
+        if document_id not in uploaded_documents:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        doc_info = uploaded_documents[document_id]
+        
+        # Delete file
+        file_path = Path(doc_info["file_path"])
+        if file_path.exists():
+            file_path.unlink()
+        
+        # Remove from storage
+        del uploaded_documents[document_id]
+        
+        # Broadcast update
+        await broadcast_update({
+            "type": "document_deleted",
+            "data": {"document_id": document_id}
+        })
+        
+        return {
+            "success": True,
+            "message": f"Document {document_id} deleted successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/documents/{document_id}/download")
+async def download_document(document_id: str):
+    """
+    Download an uploaded document
+    
+    Args:
+        document_id: Document ID
+    
+    Returns:
+        File response
+    """
+    try:
+        if document_id not in uploaded_documents:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        doc_info = uploaded_documents[document_id]
+        file_path = Path(doc_info["file_path"])
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+        
+        # Determine media type
+        media_types = {
+            "pdf": "application/pdf",
+            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "csv": "text/csv"
+        }
+        media_type = media_types.get(doc_info["file_type"], "application/octet-stream")
+        
+        return FileResponse(
+            str(file_path),
+            media_type=media_type,
+            filename=doc_info["filename"]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== Validation Endpoints (Original) ====================
 
 @app.post("/api/v1/validate")
