@@ -1,0 +1,697 @@
+"""
+Banking Model Validation System - Simplified Main API
+FastAPI application for testing core validation features (Days 1-6)
+"""
+
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import Dict, List, Optional, Any
+from datetime import datetime
+import os
+import json
+import pandas as pd
+import numpy as np
+
+# Import our new validation modules (Days 1-6)
+from validation.statistical_tests import StatisticalTestsCalculator
+from validation.performance_validator import PerformanceValidator
+from validation.model_specific_validator import ModelSpecificValidator
+from validation.stability_validator import StabilityValidator
+from validation.compliance_checker import ComplianceChecker
+from validation.document_analyzer import DocumentAnalyzer
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Banking Model Validation System - Core Features",
+    description="Testing Days 1-6 enhancements: Statistical tests, Performance, Stability, Compliance",
+    version="2.0.0-test"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Pydantic models
+class ValidationRequest(BaseModel):
+    model_type: str
+    model_name: str
+    model_version: str
+    train_data_size: int = 1000
+    test_data_size: int = 500
+    oot_data_size: int = 300
+
+class HealthResponse(BaseModel):
+    status: str
+    timestamp: str
+    version: str
+    features: List[str]
+
+# Initialize validators
+stats_calculator = StatisticalTestsCalculator()
+performance_validator = PerformanceValidator()
+model_validator = ModelSpecificValidator()
+stability_validator = StabilityValidator()
+compliance_checker = ComplianceChecker()
+document_analyzer = DocumentAnalyzer()
+
+# Helper function to generate sample data
+def generate_sample_data(size: int, model_type: str):
+    """Generate sample data for testing"""
+    np.random.seed(42)
+    
+    # Generate features
+    data = {
+        'score': np.random.randint(300, 850, size),
+        'age': np.random.randint(18, 75, size),
+        'income': np.random.randint(20000, 200000, size),
+        'debt_ratio': np.random.uniform(0, 1, size),
+        'credit_utilization': np.random.uniform(0, 1, size),
+    }
+    
+    # Add model-specific features
+    if model_type == "Application Scorecard":
+        data['employment_length'] = np.random.randint(0, 30, size)
+        data['num_accounts'] = np.random.randint(1, 20, size)
+    elif model_type == "Behavioral Scorecard":
+        data['months_on_book'] = np.random.randint(1, 120, size)
+        data['payment_history'] = np.random.uniform(0, 1, size)
+    elif model_type in ["Collections Early Stage", "Collections Late Stage"]:
+        data['days_delinquent'] = np.random.randint(1, 180, size)
+        data['contact_attempts'] = np.random.randint(0, 10, size)
+    
+    # Generate target (default indicator)
+    data['target'] = np.random.binomial(1, 0.1, size)
+    
+    # Generate predictions
+    data['prediction'] = np.random.uniform(0, 1, size)
+    data['predicted_class'] = (data['prediction'] > 0.5).astype(int)
+    
+    return pd.DataFrame(data)
+
+@app.get("/", response_model=HealthResponse)
+async def root():
+    """Root endpoint - health check"""
+    return {"status": "healthy", "message": "Banking Model Validation API"}
+
+# Document upload endpoint
+@app.post("/api/upload-documents")
+async def upload_documents(files: List[UploadFile] = File(...)):
+    """
+    Upload and process documents (PDF, DOCX, CSV)
+    For testing purposes, this endpoint accepts files but doesn't process them
+    """
+    try:
+        uploaded_docs = []
+        
+        for file in files:
+            # Validate file type
+            allowed_types = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/csv']
+            if file.content_type not in allowed_types:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File type {file.content_type} not supported. Use PDF, DOCX, or CSV."
+                )
+            
+            # Read file content (for testing, we just acknowledge receipt)
+            content = await file.read()
+            
+            uploaded_docs.append({
+                "filename": file.filename,
+                "content_type": file.content_type,
+                "size": len(content),
+                "status": "uploaded",
+                "message": "File uploaded successfully (test mode - not processed)"
+            })
+        
+        return {
+            "success": True,
+            "message": f"Successfully uploaded {len(uploaded_docs)} file(s)",
+            "documents": uploaded_docs,
+            "note": "Document upload is optional. The system will generate synthetic data for validation."
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    """Root endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0-test",
+        "features": [
+            "Statistical Tests (KS, Gini, PSI, CSI)",
+            "Performance Validation",
+            "Model-Specific Validation",
+            "Stability Analysis",
+            "SR 11-7 Compliance Checking",
+            "Document Analysis"
+        ]
+    }
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "validators": {
+            "statistical_tests": "ready",
+            "performance": "ready",
+            "model_specific": "ready",
+            "stability": "ready",
+            "compliance": "ready",
+            "document_analyzer": "ready"
+        }
+    }
+
+@app.get("/api/v1/options")
+async def get_options():
+    """
+    Get configuration options for the frontend
+    """
+    return {
+        "product_types": [
+            {"value": "unsecured_personal_loans", "label": "Unsecured Personal Loans"},
+            {"value": "secured_personal_loans", "label": "Secured Personal Loans"},
+            {"value": "credit_cards", "label": "Credit Cards"},
+            {"value": "auto_loans", "label": "Auto Loans"},
+            {"value": "mortgage", "label": "Mortgage"},
+            {"value": "small_business", "label": "Small Business Loans"}
+        ],
+        "scorecard_types": [
+            {"value": "application", "label": "Application Scorecard"},
+            {"value": "behavioral", "label": "Behavioral Scorecard"},
+            {"value": "collections_early", "label": "Collections - Early Stage"},
+            {"value": "collections_late", "label": "Collections - Late Stage"}
+        ],
+        "model_types": [
+            {"value": "logistic_regression", "label": "Logistic Regression (GLM)"},
+            {"value": "gam", "label": "Generalized Additive Model (GAM)"},
+            {"value": "xgboost", "label": "XGBoost"},
+            {"value": "random_forest", "label": "Random Forest"},
+            {"value": "neural_network", "label": "Neural Network (ANN)"},
+            {"value": "decision_tree", "label": "Decision Tree"}
+        ]
+    }
+
+# Store for validation results (in-memory for testing)
+validation_store = {}
+
+@app.post("/api/v1/validate")
+async def start_validation_v1(request: Dict[str, Any]):
+    """
+    Start validation (v1 API) - Returns validation_id for polling
+    """
+    try:
+        model_config = request.get("model_config", {})
+        validation_id = f"val_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Store initial status
+        validation_store[validation_id] = {
+            "status": "running",
+            "progress": 0,
+            "message": "Validation started",
+            "model_config": model_config,
+            "started_at": datetime.now().isoformat()
+        }
+        
+        # Map frontend model types to backend model types
+        model_type_mapping = {
+            "logistic_regression": "Application Scorecard",
+            "gam": "Application Scorecard",
+            "xgboost": "Application Scorecard",
+            "random_forest": "Application Scorecard",
+            "neural_network": "Application Scorecard",
+            "decision_tree": "Application Scorecard"
+        }
+        
+        scorecard_type_mapping = {
+            "application": "Application Scorecard",
+            "behavioral": "Behavioral Scorecard",
+            "collections_early": "Collections Early Stage",
+            "collections_late": "Collections Late Stage"
+        }
+        
+        # Determine model type
+        backend_model_type = scorecard_type_mapping.get(
+            model_config.get("scorecard_type", ""),
+            "Application Scorecard"
+        )
+        
+        # Run validation in background (simulated - in production use Celery/background tasks)
+        print(f"\n{'='*80}")
+        print(f"Starting validation: {validation_id}")
+        print(f"Model: {model_config.get('model_name', 'Unknown')}")
+        print(f"Type: {backend_model_type}")
+        print(f"{'='*80}\n")
+        
+        # Generate sample data
+        train_data = generate_sample_data(1000, backend_model_type)
+        test_data = generate_sample_data(500, backend_model_type)
+        oot_data = generate_sample_data(300, backend_model_type)
+        
+        datasets = {
+            "train": train_data,
+            "test": test_data,
+            "out_of_time": oot_data
+        }
+        
+        # Run all validations
+        validation_store[validation_id]["progress"] = 20
+        validation_store[validation_id]["message"] = "Running statistical tests..."
+        
+        # Statistical tests
+        stats_results = {}
+        for dataset_name, data in datasets.items():
+            # Calculate KS statistic
+            ks_result = stats_calculator.calculate_ks_statistic(
+                data['target'].values, data['prediction'].values, dataset_name
+            )
+            
+            # Calculate Gini coefficient
+            gini_result = stats_calculator.calculate_gini_coefficient(
+                data['target'].values, data['prediction'].values, dataset_name
+            )
+            
+            # Calculate PSI (for score distribution)
+            psi_result = stats_calculator.calculate_psi(
+                train_data['score'].values,
+                data['score'].values,
+                buckets=10,
+                feature_name=f"score_{dataset_name}"
+            )
+            
+            # Calculate CSI (for multiple features)
+            csi_result = stats_calculator.calculate_csi(
+                train_data[['score', 'age', 'income']],
+                data[['score', 'age', 'income']],
+                features=['score', 'age', 'income'],
+                buckets=10
+            )
+            
+            stats_results[dataset_name] = {
+                "ks_statistic": ks_result.get("ks_statistic", 0),
+                "ks_details": ks_result,
+                "gini_coefficient": gini_result.get("gini", 0),
+                "gini_details": gini_result,
+                "psi": psi_result.get("psi", 0),
+                "psi_details": psi_result,
+                "csi": csi_result.get("average_csi", 0),
+                "csi_details": csi_result
+            }
+        
+        validation_store[validation_id]["progress"] = 40
+        validation_store[validation_id]["message"] = "Validating performance..."
+        
+        # Performance validation - call with proper parameters
+        performance_results = performance_validator.validate_performance(
+            model_config=model_config,
+            train_data=train_data,
+            test_data=test_data,
+            oot_data=oot_data
+        )
+        
+        validation_store[validation_id]["progress"] = 60
+        validation_store[validation_id]["message"] = "Running model-specific validation..."
+        
+        # Model-specific validation - use correct method name
+        model_specific_results = model_validator.validate(
+            model_config=model_config,
+            train_data=train_data,
+            test_data=test_data,
+            oot_data=oot_data
+        )
+        
+        validation_store[validation_id]["progress"] = 80
+        validation_store[validation_id]["message"] = "Checking compliance..."
+        
+        # Compliance check - use correct method name
+        all_results = {
+            "statistical_tests": stats_results,
+            "performance": performance_results,
+            "model_specific": model_specific_results
+        }
+        compliance_results = compliance_checker.check_sr_11_7_compliance(all_results)
+        
+        # Store final results
+        validation_store[validation_id] = {
+            "status": "completed",
+            "progress": 100,
+            "message": "Validation completed successfully",
+            "model_config": model_config,
+            "started_at": validation_store[validation_id]["started_at"],
+            "completed_at": datetime.now().isoformat(),
+            "results": {
+                "statistical_tests": stats_results,
+                "performance": performance_results,
+                "model_specific": model_specific_results,
+                "compliance": compliance_results,
+                "summary": {
+                    "overall_status": "PASS" if compliance_results.get("compliance_score", 0) >= 70 else "FAIL",
+                    "ks_statistic": stats_results.get("test", {}).get("ks_statistic", 0),
+                    "gini_coefficient": stats_results.get("test", {}).get("gini_coefficient", 0),
+                    "psi": stats_results.get("test", {}).get("psi", 0),
+                    "compliance_score": compliance_results.get("compliance_score", 0)
+                }
+            }
+        }
+        
+        print(f"\n✅ Validation {validation_id} completed successfully\n")
+        
+        return {
+            "validation_id": validation_id,
+            "status": "started",
+            "message": "Validation started successfully"
+        }
+        
+    except Exception as e:
+        print(f"\n❌ Validation failed: {str(e)}\n")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/validate/{validation_id}")
+async def get_validation_status(validation_id: str):
+    """
+    Get validation status (v1 API)
+    """
+    if validation_id not in validation_store:
+        raise HTTPException(status_code=404, detail="Validation not found")
+    
+    validation = validation_store[validation_id]
+    return {
+        "validation_id": validation_id,
+        "status": validation["status"],
+        "progress": validation.get("progress", 0),
+        "message": validation.get("message", ""),
+        "started_at": validation.get("started_at"),
+        "completed_at": validation.get("completed_at")
+    }
+
+@app.get("/api/v1/validate/{validation_id}/results")
+async def get_validation_results(validation_id: str):
+    """
+    Get validation results (v1 API)
+    """
+    if validation_id not in validation_store:
+        raise HTTPException(status_code=404, detail="Validation not found")
+    
+    validation = validation_store[validation_id]
+    
+    if validation["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Validation not completed yet")
+    
+    return validation["results"]
+
+@app.get("/api/v1/validate/{validation_id}/document")
+async def download_validation_document(validation_id: str):
+    """
+    Download validation report (v1 API)
+    Returns a simple text file for now - DOCX generation can be added later
+    """
+    if validation_id not in validation_store:
+        raise HTTPException(status_code=404, detail="Validation not found")
+    
+    validation = validation_store[validation_id]
+    
+    if validation["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Validation not completed yet")
+    
+    # Generate simple report content
+    model_config = validation["model_config"]
+    results = validation["results"]
+    
+    report_content = f"""
+BANKING MODEL VALIDATION REPORT
+================================
+
+Validation ID: {validation_id}
+Model Name: {model_config.get('model_name', 'N/A')}
+Product Type: {model_config.get('product_type', 'N/A')}
+Scorecard Type: {model_config.get('scorecard_type', 'N/A')}
+Model Type: {model_config.get('model_type', 'N/A')}
+
+Validation Date: {validation.get('completed_at', 'N/A')}
+
+SUMMARY
+-------
+Overall Status: {results['summary']['overall_status']}
+KS Statistic: {results['summary']['ks_statistic']:.4f}
+Gini Coefficient: {results['summary']['gini_coefficient']:.4f}
+PSI: {results['summary']['psi']:.4f}
+Compliance Score: {results['summary']['compliance_score']:.2f}%
+
+STATISTICAL TESTS
+-----------------
+Test Dataset:
+  - KS Statistic: {results['statistical_tests']['test']['ks_statistic']:.4f}
+  - Gini Coefficient: {results['statistical_tests']['test']['gini_coefficient']:.4f}
+  - PSI: {results['statistical_tests']['test']['psi']:.4f}
+  - CSI: {results['statistical_tests']['test']['csi']:.4f}
+
+PERFORMANCE METRICS
+-------------------
+Test Dataset:
+  - Accuracy: {results['performance']['test']['accuracy']:.4f}
+  - Precision: {results['performance']['test']['precision']:.4f}
+  - Recall: {results['performance']['test']['recall']:.4f}
+  - F1 Score: {results['performance']['test']['f1_score']:.4f}
+  - AUC-ROC: {results['performance']['test']['auc_roc']:.4f}
+
+COMPLIANCE
+----------
+Overall Score: {results['compliance']['overall_score']:.2f}%
+Status: {results['compliance']['overall_status']}
+
+Detailed Scores:
+  - Conceptual Soundness: {results['compliance']['detailed_scores']['conceptual_soundness']:.2f}%
+  - Data Quality: {results['compliance']['detailed_scores']['data_quality']:.2f}%
+  - Model Performance: {results['compliance']['detailed_scores']['model_performance']:.2f}%
+  - Model Assumptions: {results['compliance']['detailed_scores']['model_assumptions']:.2f}%
+  - Ongoing Monitoring: {results['compliance']['detailed_scores']['ongoing_monitoring']:.2f}%
+
+---
+Generated by Banking Model Validation System v2.0.0
+"""
+    
+    from fastapi.responses import Response
+    return Response(
+        content=report_content,
+        media_type="text/plain",
+        headers={
+            "Content-Disposition": f"attachment; filename={model_config.get('model_name', 'validation')}_report.txt"
+        }
+    )
+
+
+
+@app.post("/api/validate")
+async def validate_model(request: ValidationRequest):
+    """
+    Main validation endpoint - Tests all Days 1-6 features
+    """
+    try:
+        print(f"\n{'='*80}")
+        print(f"Starting validation for: {request.model_name}")
+        print(f"Model Type: {request.model_type}")
+        print(f"{'='*80}\n")
+        
+        # Generate sample datasets
+        print("📊 Generating sample datasets...")
+        train_data = generate_sample_data(request.train_data_size, request.model_type)
+        test_data = generate_sample_data(request.test_data_size, request.model_type)
+        oot_data = generate_sample_data(request.oot_data_size, request.model_type)
+        
+        datasets = {
+            "train": train_data,
+            "test": test_data,
+            "out_of_time": oot_data
+        }
+        
+        model_config = {
+            "model_type": request.model_type,
+            "model_name": request.model_name,
+            "model_version": request.model_version
+        }
+        
+        results = {}
+        
+        # 1. Statistical Tests (Day 1)
+        print("\n🔬 Running Statistical Tests (Day 1)...")
+        try:
+            ks_result = stats_calculator.calculate_ks_statistic(
+                train_data['target'].values,
+                train_data['prediction'].values
+            )
+            gini_result = stats_calculator.calculate_gini_coefficient(
+                train_data['target'].values,
+                train_data['prediction'].values
+            )
+            psi_result = stats_calculator.calculate_psi(
+                train_data['score'].values,
+                test_data['score'].values
+            )
+            csi_result = stats_calculator.calculate_csi(
+                train_data[['age', 'income', 'debt_ratio']],
+                test_data[['age', 'income', 'debt_ratio']]
+            )
+            
+            results['statistical_tests'] = {
+                "ks_statistic": ks_result,
+                "gini_coefficient": gini_result,
+                "psi": psi_result,
+                "csi": csi_result
+            }
+            print(f"   ✅ KS Statistic: {ks_result['ks_statistic']:.4f}")
+            print(f"   ✅ Gini Coefficient: {gini_result['gini']:.4f}")
+            print(f"   ✅ PSI: {psi_result['psi']:.4f}")
+            print(f"   ✅ Average CSI: {csi_result['average_csi']:.4f}")
+        except Exception as e:
+            print(f"   ❌ Statistical tests error: {str(e)}")
+            results['statistical_tests'] = {"error": str(e)}
+        
+        # 2. Performance Validation (Day 2)
+        print("\n📈 Running Performance Validation (Day 2)...")
+        try:
+            perf_results = performance_validator.validate_performance(
+                model_config=model_config,
+                train_data=train_data,
+                test_data=test_data,
+                oot_data=oot_data
+            )
+            results['performance'] = perf_results
+            print(f"   ✅ Train Accuracy: {perf_results['train']['accuracy']:.4f}")
+            print(f"   ✅ Test Accuracy: {perf_results['test']['accuracy']:.4f}")
+            print(f"   ✅ OOT Accuracy: {perf_results['out_of_time']['accuracy']:.4f}")
+        except Exception as e:
+            print(f"   ❌ Performance validation error: {str(e)}")
+            results['performance'] = {"error": str(e)}
+        
+        # 3. Model-Specific Validation (Day 2)
+        print("\n🎯 Running Model-Specific Validation (Day 2)...")
+        try:
+            model_results = model_validator.validate(
+                model_config=model_config,
+                train_data=train_data,
+                test_data=test_data,
+                oot_data=oot_data
+            )
+            results['model_specific'] = model_results
+            print(f"   ✅ Model Type: {model_results['model_type']}")
+            print(f"   ✅ Validation Status: {model_results['validation_status']}")
+        except Exception as e:
+            print(f"   ❌ Model-specific validation error: {str(e)}")
+            results['model_specific'] = {"error": str(e)}
+        
+        # 4. Stability Analysis (Day 3)
+        print("\n🔄 Running Stability Analysis (Day 3)...")
+        try:
+            stability_results = stability_validator.analyze_stability(
+                train_data=train_data,
+                test_data=test_data,
+                oot_data=oot_data,
+                model_config=model_config
+            )
+            results['stability'] = stability_results
+            print(f"   ✅ Overall Status: {stability_results['overall_status']}")
+            print(f"   ✅ PSI Score: {stability_results['psi']['psi_score']:.4f}")
+            print(f"   ✅ CSI Score: {stability_results['csi']['average_csi']:.4f}")
+        except Exception as e:
+            print(f"   ❌ Stability analysis error: {str(e)}")
+            results['stability'] = {"error": str(e)}
+        
+        # 5. SR 11-7 Compliance (Day 3)
+        print("\n✅ Running SR 11-7 Compliance Check (Day 3)...")
+        try:
+            compliance_results = compliance_checker.check_sr_11_7_compliance(results)
+            results['compliance'] = compliance_results
+            print(f"   ✅ Compliance Score: {compliance_results['compliance_score']:.1f}%")
+            print(f"   ✅ Overall Status: {compliance_results['overall_status']}")
+            print(f"   ✅ Categories Passed: {compliance_results['categories_passed']}/9")
+        except Exception as e:
+            print(f"   ❌ Compliance check error: {str(e)}")
+            results['compliance'] = {"error": str(e)}
+        
+        # Add metadata
+        results['metadata'] = {
+            "model_name": request.model_name,
+            "model_type": request.model_type,
+            "model_version": request.model_version,
+            "validation_date": datetime.now().isoformat(),
+            "datasets": {
+                "train_size": len(train_data),
+                "test_size": len(test_data),
+                "oot_size": len(oot_data)
+            }
+        }
+        
+        print(f"\n{'='*80}")
+        print("✅ Validation Complete!")
+        print(f"{'='*80}\n")
+        
+        return JSONResponse(content=results)
+        
+    except Exception as e:
+        print(f"\n❌ Validation failed: {str(e)}\n")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/upload-documents")
+async def upload_documents(files: List[UploadFile] = File(...)):
+    """
+    Document upload endpoint (Day 4)
+    """
+    try:
+        uploaded_files = []
+        
+        for file in files:
+            # Save file
+            file_path = f"/tmp/{file.filename}"
+            with open(file_path, "wb") as f:
+                content = await file.read()
+                f.write(content)
+            
+            # Analyze document
+            analysis = document_analyzer.analyze_document(file_path)
+            
+            uploaded_files.append({
+                "filename": file.filename,
+                "size": len(content),
+                "analysis": analysis
+            })
+        
+        return {
+            "status": "success",
+            "files_uploaded": len(uploaded_files),
+            "files": uploaded_files
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    print("\n" + "="*80)
+    print("🚀 Starting Banking Model Validation System - Core Features Test")
+    print("="*80)
+    print("\n📍 Server will be available at:")
+    print("   - API: http://localhost:8000")
+    print("   - Docs: http://localhost:8000/docs")
+    print("\n🔬 Testing Features from Days 1-6:")
+    print("   ✅ Day 1: Statistical Tests (KS, Gini, PSI, CSI)")
+    print("   ✅ Day 2: Performance & Model-Specific Validation")
+    print("   ✅ Day 3: Stability Analysis & SR 11-7 Compliance")
+    print("   ✅ Day 4: Document Upload & Analysis")
+    print("   ✅ Day 5: Integration Complete")
+    print("   ✅ Day 6: Frontend Components Ready")
+    print("\n" + "="*80 + "\n")
+    
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Made with Bob

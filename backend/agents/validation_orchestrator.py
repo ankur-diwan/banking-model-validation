@@ -242,11 +242,11 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Validate model performance metrics with enhanced statistical tests"""
         
-        from validation.performance_validator import EnhancedPerformanceValidator
+        from validation.performance_validator import PerformanceValidator
         from validation.model_specific_validator import ModelSpecificValidator
         
-        # Use enhanced performance validator
-        perf_validator = EnhancedPerformanceValidator()
+        # Use performance validator with statistical tests integration
+        perf_validator = PerformanceValidator()
         model_validator = ModelSpecificValidator()
         
         # Get scorecard type
@@ -254,14 +254,15 @@ class ValidationOrchestratorAgent:
         
         # Run enhanced performance validation
         perf_results = perf_validator.validate_performance(
+            model_config=model_config,
             train_data=datasets["train"],
             test_data=datasets["test"],
             oot_data=datasets["out_of_time"]
         )
         
         # Run model-specific validation
-        model_specific_results = model_validator.validate_scorecard(
-            scorecard_type=scorecard_type,
+        model_specific_results = model_validator.validate(
+            model_config=model_config,
             train_data=datasets["train"],
             test_data=datasets["test"],
             oot_data=datasets["out_of_time"]
@@ -271,11 +272,18 @@ class ValidationOrchestratorAgent:
         combined_results = {
             "performance_metrics": perf_results,
             "model_specific_validation": model_specific_results,
+            "statistical_tests": {
+                "ks_test": perf_results.get("statistical_tests", {}).get("ks_test", {}),
+                "gini": perf_results.get("statistical_tests", {}).get("gini", {})
+            },
             "validated_at": datetime.utcnow().isoformat()
         }
         
-        logger.info(f"Performance validation complete - KS: {perf_results.get('test', {}).get('ks_statistic', 'N/A')}, "
-                   f"Gini: {perf_results.get('test', {}).get('gini_coefficient', 'N/A')}")
+        # Log key metrics
+        ks_stat = perf_results.get("statistical_tests", {}).get("ks_test", {}).get("ks_statistic", "N/A")
+        gini_coef = perf_results.get("statistical_tests", {}).get("gini", {}).get("gini_coefficient", "N/A")
+        
+        logger.info(f"Performance validation complete - KS: {ks_stat}, Gini: {gini_coef}")
         
         return combined_results
     
@@ -303,22 +311,24 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Analyze model stability with enhanced PSI/CSI calculations"""
         
-        from validation.stability_validator import EnhancedStabilityValidator
+        from validation.stability_validator import StabilityValidator
         
-        validator = EnhancedStabilityValidator()
+        validator = StabilityValidator()
         
         # Run comprehensive stability analysis
         results = validator.analyze_stability(
             train_data=datasets["train"],
             test_data=datasets["test"],
-            oot_data=datasets["out_of_time"]
+            oot_data=datasets["out_of_time"],
+            model_config=None
         )
         
         # Log key stability metrics
-        psi_score = results.get("psi_analysis", {}).get("overall_psi", "N/A")
-        csi_score = results.get("csi_analysis", {}).get("overall_csi", "N/A")
+        psi_score = results.get("psi", {}).get("psi_score", "N/A")
+        csi_score = results.get("csi", {}).get("average_csi", "N/A")
+        overall_status = results.get("overall_status", "Unknown")
         
-        logger.info(f"Stability analysis complete - PSI: {psi_score}, CSI: {csi_score}")
+        logger.info(f"Stability analysis complete - PSI: {psi_score}, CSI: {csi_score}, Status: {overall_status}")
         
         return results
     
@@ -355,25 +365,25 @@ class ValidationOrchestratorAgent:
     ) -> Dict[str, Any]:
         """Check SR 11-7 compliance with enhanced scoring"""
         
-        from validation.compliance_checker import SR117ComplianceChecker
+        from validation.compliance_checker import ComplianceChecker
         
-        checker = SR117ComplianceChecker()
+        checker = ComplianceChecker()
         
         # Run comprehensive compliance check
-        compliance_results = checker.check_compliance(results)
+        compliance_results = checker.check_sr_11_7_compliance(results)
         
         # Log compliance score
-        overall_score = compliance_results.get("overall_score", 0)
-        compliance_level = compliance_results.get("compliance_level", "Unknown")
+        overall_score = compliance_results.get("compliance_score", 0)
+        status = compliance_results.get("overall_status", "Unknown")
         
-        logger.info(f"Compliance check complete - Score: {overall_score:.1f}%, Level: {compliance_level}")
+        logger.info(f"Compliance check complete - Score: {overall_score:.1f}%, Status: {status}")
         
         # Add gap analysis
         if overall_score < 80:
             logger.warning(f"Compliance gaps detected. Review required.")
             gaps = compliance_results.get("gaps", [])
             for gap in gaps[:3]:  # Log first 3 gaps
-                logger.warning(f"  - {gap.get('requirement', 'Unknown')}: {gap.get('status', 'Unknown')}")
+                logger.warning(f"  - {gap.get('requirement', 'Unknown')}: {gap.get('issue', 'Unknown')}")
         
         return compliance_results
     

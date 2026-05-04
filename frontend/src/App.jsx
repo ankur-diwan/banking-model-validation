@@ -30,15 +30,18 @@ import {
   CloudDownload
 } from '@mui/icons-material';
 import axios from 'axios';
+import DocumentUpload from './components/DocumentUpload';
+import ValidationResults from './components/ValidationResults';
 import './App.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-const steps = ['Select Model Configuration', 'Review & Submit', 'Validation Progress', 'Results'];
+const steps = ['Upload Documents (Optional)', 'Select Model Configuration', 'Review & Submit', 'Validation Progress', 'Results'];
 
 function App() {
   const [activeStep, setActiveStep] = useState(0);
   const [options, setOptions] = useState(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState([]);
   const [modelConfig, setModelConfig] = useState({
     model_name: '',
     product_type: '',
@@ -59,7 +62,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (validationId && activeStep === 2) {
+    if (validationId && activeStep === 3) {
       const interval = setInterval(() => {
         fetchValidationStatus();
       }, 3000);
@@ -94,7 +97,7 @@ function App() {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/v1/validate/${validationId}/results`);
       setValidationResults(response.data);
-      setActiveStep(3);
+      setActiveStep(4);
     } catch (err) {
       console.error('Failed to fetch validation results:', err);
     }
@@ -164,20 +167,58 @@ function App() {
     }
   };
 
+  const handleDocumentsUploaded = (documents) => {
+    setUploadedDocuments(documents);
+  };
+
   const renderStepContent = (step) => {
     switch (step) {
       case 0:
-        return renderModelConfiguration();
+        return renderDocumentUpload();
       case 1:
-        return renderReviewSubmit();
+        return renderModelConfiguration();
       case 2:
-        return renderValidationProgress();
+        return renderReviewSubmit();
       case 3:
+        return renderValidationProgress();
+      case 4:
         return renderResults();
       default:
         return null;
     }
   };
+
+  const renderDocumentUpload = () => (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h5" gutterBottom>
+        Upload Supporting Documents (Optional)
+      </Typography>
+      <Typography variant="body2" color="text.secondary" paragraph>
+        Upload model documentation, data dictionaries, or validation reports to enhance the validation process.
+        This step is optional - you can proceed without uploading documents.
+      </Typography>
+
+      <DocumentUpload onDocumentsUploaded={handleDocumentsUploaded} />
+
+      {uploadedDocuments.length > 0 && (
+        <Alert severity="success" sx={{ mt: 3 }}>
+          <Typography variant="body2">
+            {uploadedDocuments.length} document(s) uploaded successfully. These will be analyzed during validation.
+          </Typography>
+        </Alert>
+      )}
+
+      <Alert severity="info" sx={{ mt: 3 }}>
+        <Typography variant="body2">
+          <strong>Supported formats:</strong> PDF, DOCX, CSV
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          <strong>What happens next:</strong> Uploaded documents will be analyzed to extract model information,
+          identify SR 11-7 sections, and enhance the validation process with additional context.
+        </Typography>
+      </Alert>
+    </Box>
+  );
 
   const renderModelConfiguration = () => (
     <Box sx={{ mt: 3 }}>
@@ -392,84 +433,43 @@ function App() {
         </Typography>
       </Alert>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <CheckCircle color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Overall Status</Typography>
-              </Box>
-              <Chip 
-                label="Compliant" 
-                color="success" 
-                sx={{ mb: 2 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                Model meets all SR 11-7 requirements
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Use the enhanced ValidationResults component */}
+      {validationResults && <ValidationResults results={validationResults} />}
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Assessment color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Validation Metrics</Typography>
-              </Box>
-              <Typography variant="body2">
-                • Data Quality: Excellent<br />
-                • Model Performance: Strong<br />
-                • Stability: Stable<br />
-                • Documentation: Complete
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Description color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Validation Report</Typography>
-              </Box>
-              <Typography variant="body2" paragraph>
-                A comprehensive Word document has been generated containing:
-              </Typography>
-              <ul>
-                <li>Executive Summary</li>
-                <li>Model Purpose and Design</li>
-                <li>Data Quality Assessment</li>
-                <li>Model Specification</li>
-                <li>Performance Validation</li>
-                <li>Assumptions Testing</li>
-                <li>Stability Analysis</li>
-                <li>SR 11-7 Compliance Summary</li>
-                <li>Recommendations</li>
-              </ul>
-              <Button
-                variant="contained"
-                startIcon={<CloudDownload />}
-                onClick={handleDownloadDocument}
-                sx={{ mt: 2 }}
-              >
-                Download Validation Report
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Download button */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Description color="primary" sx={{ mr: 1 }} />
+            <Typography variant="h6">Validation Report</Typography>
+          </Box>
+          <Typography variant="body2" paragraph>
+            A comprehensive Word document has been generated containing all validation results,
+            statistical tests, compliance analysis, and recommendations.
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<CloudDownload />}
+            onClick={handleDownloadDocument}
+            sx={{ mt: 2 }}
+          >
+            Download Validation Report
+          </Button>
+        </CardContent>
+      </Card>
     </Box>
   );
 
   const isStepValid = () => {
     if (activeStep === 0) {
-      return modelConfig.model_name && 
-             modelConfig.product_type && 
-             modelConfig.scorecard_type && 
+      // Document upload is optional, always valid
+      return true;
+    }
+    if (activeStep === 1) {
+      // Model configuration must be complete
+      return modelConfig.model_name &&
+             modelConfig.product_type &&
+             modelConfig.scorecard_type &&
              modelConfig.model_type;
     }
     return true;
@@ -505,7 +505,7 @@ function App() {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button
-            disabled={activeStep === 0 || activeStep === 2}
+            disabled={activeStep === 0 || activeStep === 3}
             onClick={handleBack}
           >
             Back
@@ -515,7 +515,7 @@ function App() {
               <Button onClick={handleReset} variant="contained">
                 Start New Validation
               </Button>
-            ) : activeStep === 1 ? (
+            ) : activeStep === 2 ? (
               <Button
                 variant="contained"
                 onClick={handleSubmit}
@@ -523,7 +523,7 @@ function App() {
               >
                 {loading ? <CircularProgress size={24} /> : 'Start Validation'}
               </Button>
-            ) : activeStep === 0 ? (
+            ) : (activeStep === 0 || activeStep === 1) ? (
               <Button
                 variant="contained"
                 onClick={handleNext}

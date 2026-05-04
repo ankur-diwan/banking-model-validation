@@ -1,0 +1,9 @@
+Variable_Name,Description,Type,Valid_Range,Missing_Treatment,Business_Logic
+credit_score,FICO credit bureau score,Continuous,300-850,Reject application,Primary risk indicator
+dti_ratio,Debt-to-Income ratio (%),Continuous,0-100,Set to median,Affordability measure
+delinquencies_12m,Number of 30+ DPD in last 12 months,Count,0-20,Set to 0,Payment behavior indicator
+employment_length,Years at current employer,Continuous,0-50,Set to 0,Stability indicator
+annual_income,Gross annual income ($),Continuous,10000-500000,Reject application,Repayment capacity
+loan_amount,Requested loan amount ($),Continuous,1000-50000,N/A,Exposure amount
+home_ownership,Housing status,Categorical,RENT/OWN/MORTGAGE,Set to RENT,Stability indicator
+purpose,Loan purpose,Categorical,DEBT_CONSOLIDATION/HOME/AUTO/OTHER,Set to OTHER,Risk segmentation
