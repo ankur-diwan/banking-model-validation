@@ -43,7 +43,7 @@ const ACCEPTED_FILE_TYPES = {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-const DocumentUpload = ({ onUploadComplete, onError }) => {
+const DocumentUpload = ({ onDocumentsUploaded, onError }) => {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
@@ -176,8 +176,8 @@ const DocumentUpload = ({ onUploadComplete, onError }) => {
         }))
       );
 
-      if (onUploadComplete) {
-        onUploadComplete(response.data);
+      if (onDocumentsUploaded) {
+        onDocumentsUploaded(response.data.documents || []);
       }
     } catch (error) {
       const errorMessage = error.response?.data?.detail || 'Failed to upload files';
