@@ -28,6 +28,7 @@ class ValidationOrchestratorAgent:
         self.watsonx = watsonx_client
         self.data_generator = ScorecardDataGenerator()
         self.validation_state = {}
+        self.document_analyzer = None
         
     async def orchestrate_validation(
         self,
@@ -58,10 +59,25 @@ class ValidationOrchestratorAgent:
         }
         
         try:
+            logger.info(f"=" * 80)
+            logger.info(f"VALIDATION ORCHESTRATION STARTED")
+            logger.info(f"Validation ID: {validation_id}")
+            logger.info(f"Model: {model_config.get('model_name', 'Unknown')}")
+            logger.info(f"Type: {model_config.get('scorecard_type', 'Unknown')}")
+            logger.info(f"=" * 80)
+            
             # Phase 1: Get AI-powered validation recommendations
             logger.info("Phase 1: Getting validation recommendations")
-            recommendations = await self._get_validation_requirements(model_config)
-            self.validation_state[validation_id]["results"]["recommendations"] = recommendations
+            try:
+                recommendations = await self._get_validation_requirements(model_config)
+                self.validation_state[validation_id]["results"]["recommendations"] = recommendations
+                logger.info("✓ Phase 1 complete")
+            except Exception as e:
+                logger.error(f"✗ Phase 1 failed: {e}")
+                self.validation_state[validation_id]["results"]["recommendations"] = {
+                    "status": "failed",
+                    "error": str(e)
+                }
             
             # Phase 2: Generate synthetic data
             logger.info("Phase 2: Generating synthetic data")
@@ -224,20 +240,44 @@ class ValidationOrchestratorAgent:
         model_config: Dict[str, Any],
         datasets: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Validate model performance metrics"""
+        """Validate model performance metrics with enhanced statistical tests"""
         
-        from validation.performance_validator import PerformanceValidator
+        from validation.performance_validator import EnhancedPerformanceValidator
+        from validation.model_specific_validator import ModelSpecificValidator
         
-        validator = PerformanceValidator()
+        # Use enhanced performance validator
+        perf_validator = EnhancedPerformanceValidator()
+        model_validator = ModelSpecificValidator()
         
-        results = validator.validate_performance(
-            model_config=model_config,
+        # Get scorecard type
+        scorecard_type = model_config.get("scorecard_type", "application")
+        
+        # Run enhanced performance validation
+        perf_results = perf_validator.validate_performance(
             train_data=datasets["train"],
             test_data=datasets["test"],
             oot_data=datasets["out_of_time"]
         )
         
-        return results
+        # Run model-specific validation
+        model_specific_results = model_validator.validate_scorecard(
+            scorecard_type=scorecard_type,
+            train_data=datasets["train"],
+            test_data=datasets["test"],
+            oot_data=datasets["out_of_time"]
+        )
+        
+        # Combine results
+        combined_results = {
+            "performance_metrics": perf_results,
+            "model_specific_validation": model_specific_results,
+            "validated_at": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"Performance validation complete - KS: {perf_results.get('test', {}).get('ks_statistic', 'N/A')}, "
+                   f"Gini: {perf_results.get('test', {}).get('gini_coefficient', 'N/A')}")
+        
+        return combined_results
     
     async def _test_model_assumptions(
         self,
@@ -261,17 +301,24 @@ class ValidationOrchestratorAgent:
         self,
         datasets: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Analyze model stability"""
+        """Analyze model stability with enhanced PSI/CSI calculations"""
         
-        from validation.stability_validator import StabilityValidator
+        from validation.stability_validator import EnhancedStabilityValidator
         
-        validator = StabilityValidator()
+        validator = EnhancedStabilityValidator()
         
+        # Run comprehensive stability analysis
         results = validator.analyze_stability(
             train_data=datasets["train"],
             test_data=datasets["test"],
             oot_data=datasets["out_of_time"]
         )
+        
+        # Log key stability metrics
+        psi_score = results.get("psi_analysis", {}).get("overall_psi", "N/A")
+        csi_score = results.get("csi_analysis", {}).get("overall_csi", "N/A")
+        
+        logger.info(f"Stability analysis complete - PSI: {psi_score}, CSI: {csi_score}")
         
         return results
     
@@ -306,13 +353,27 @@ class ValidationOrchestratorAgent:
         validation_id: str,
         results: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Check SR 11-7 compliance"""
+        """Check SR 11-7 compliance with enhanced scoring"""
         
-        from validation.compliance_checker import ComplianceChecker
+        from validation.compliance_checker import SR117ComplianceChecker
         
-        checker = ComplianceChecker()
+        checker = SR117ComplianceChecker()
         
-        compliance_results = checker.check_sr_11_7_compliance(results)
+        # Run comprehensive compliance check
+        compliance_results = checker.check_compliance(results)
+        
+        # Log compliance score
+        overall_score = compliance_results.get("overall_score", 0)
+        compliance_level = compliance_results.get("compliance_level", "Unknown")
+        
+        logger.info(f"Compliance check complete - Score: {overall_score:.1f}%, Level: {compliance_level}")
+        
+        # Add gap analysis
+        if overall_score < 80:
+            logger.warning(f"Compliance gaps detected. Review required.")
+            gaps = compliance_results.get("gaps", [])
+            for gap in gaps[:3]:  # Log first 3 gaps
+                logger.warning(f"  - {gap.get('requirement', 'Unknown')}: {gap.get('status', 'Unknown')}")
         
         return compliance_results
     
@@ -382,3 +443,48 @@ class ValidationOrchestratorAgent:
         ]
 
 # Made with Bob
+
+    async def analyze_uploaded_document(
+        self,
+        document_path: str
+    ) -> Dict[str, Any]:
+        """
+        Analyze an uploaded model documentation document
+        
+        Args:
+            document_path: Path to the uploaded document
+            
+        Returns:
+            Document analysis results including SR 11-7 section detection
+        """
+        try:
+            from validation.document_analyzer import DocumentAnalyzer
+            
+            if self.document_analyzer is None:
+                self.document_analyzer = DocumentAnalyzer()
+            
+            logger.info(f"Analyzing uploaded document: {document_path}")
+            
+            # Analyze the document
+            analysis = self.document_analyzer.analyze_document(document_path)
+            
+            # Log key findings
+            sr_coverage = analysis.get("sr_11_7_sections", {}).get("overall_coverage", 0)
+            sections_found = len(analysis.get("sr_11_7_sections", {}).get("sections_found", []))
+            
+            logger.info(f"Document analysis complete - SR 11-7 Coverage: {sr_coverage}%, Sections: {sections_found}/9")
+            
+            return {
+                "status": "success",
+                "analysis": analysis,
+                "analyzed_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Document analysis failed: {e}")
+            return {
+                "status": "failed",
+                "error": str(e),
+                "analyzed_at": datetime.utcnow().isoformat()
+            }
+    
