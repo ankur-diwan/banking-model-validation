@@ -111,12 +111,14 @@ async def upload_documents(files: List[UploadFile] = File(...)):
         uploaded_docs = []
         
         for file in files:
-            # Validate file type
-            allowed_types = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/csv']
-            if file.content_type not in allowed_types:
+            # Validate file type by extension (more reliable than MIME type)
+            filename_lower = file.filename.lower()
+            allowed_extensions = ['.pdf', '.docx', '.csv']
+            
+            if not any(filename_lower.endswith(ext) for ext in allowed_extensions):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"File type {file.content_type} not supported. Use PDF, DOCX, or CSV."
+                    detail=f"File type not supported. Only PDF, DOCX, and CSV files are allowed."
                 )
             
             # Read file content (for testing, we just acknowledge receipt)
