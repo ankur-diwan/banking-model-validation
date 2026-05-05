@@ -112,14 +112,11 @@ const ValidationResults = ({ results }) => {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <Assessment color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle2">Overall Status</Typography>
+                  <Typography variant="subtitle2">Model Type</Typography>
                 </Box>
-                <Chip
-                  icon={getStatusIcon(results.overall_status)}
-                  label={results.overall_status || 'Unknown'}
-                  color={getStatusColor(results.overall_status)}
-                  sx={{ mt: 1 }}
-                />
+                <Typography variant="h6">
+                  {results.metadata?.model_type || results.model_specific?.model_type || 'N/A'}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -131,7 +128,12 @@ const ValidationResults = ({ results }) => {
                   <Typography variant="subtitle2">Performance</Typography>
                 </Box>
                 <Typography variant="h6">
-                  {results.performance?.overall_status || 'N/A'}
+                  {results.performance?.train?.accuracy
+                    ? `${(results.performance.train.accuracy * 100).toFixed(1)}%`
+                    : 'N/A'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Train Accuracy
                 </Typography>
               </CardContent>
             </Card>
@@ -157,8 +159,8 @@ const ValidationResults = ({ results }) => {
                   <Typography variant="subtitle2">Compliance</Typography>
                 </Box>
                 <Typography variant="h6">
-                  {results.compliance?.overall_score 
-                    ? `${results.compliance.overall_score.toFixed(1)}%`
+                  {results.compliance?.compliance_score
+                    ? `${results.compliance.compliance_score.toFixed(1)}%`
                     : 'N/A'}
                 </Typography>
               </CardContent>
@@ -168,7 +170,7 @@ const ValidationResults = ({ results }) => {
       </Paper>
 
       {/* Statistical Tests */}
-      {results.performance?.statistical_tests && (
+      {results.statistical_tests && (
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography variant="h6">📊 Statistical Tests</Typography>
@@ -176,7 +178,7 @@ const ValidationResults = ({ results }) => {
           <AccordionDetails>
             <Grid container spacing={2}>
               {/* KS Test */}
-              {results.performance.statistical_tests.ks_test && (
+              {results.statistical_tests.train && (
                 <Grid item xs={12} md={6}>
                   <Card>
                     <CardContent>
@@ -186,19 +188,19 @@ const ValidationResults = ({ results }) => {
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          KS Statistic
+                          KS Statistic (Train)
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(results.performance.statistical_tests.ks_test.ks_statistic)}
+                          {formatNumber(results.statistical_tests.train.ks_statistic)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.performance.statistical_tests.ks_test.interpretation}
+                          {results.statistical_tests.train.interpretation}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={results.performance.statistical_tests.ks_test.status}
-                          color={getStatusColor(results.performance.statistical_tests.ks_test.status)}
+                          label={results.statistical_tests.train.status}
+                          color={getStatusColor(results.statistical_tests.train.status)}
                           size="small"
                         />
                       </Box>
@@ -208,7 +210,7 @@ const ValidationResults = ({ results }) => {
               )}
 
               {/* Gini Coefficient */}
-              {results.performance.statistical_tests.gini && (
+              {results.statistical_tests.gini_coefficient && (
                 <Grid item xs={12} md={6}>
                   <Card>
                     <CardContent>
@@ -221,16 +223,16 @@ const ValidationResults = ({ results }) => {
                           Gini Score
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(results.performance.statistical_tests.gini.gini_coefficient)}
+                          {formatNumber(results.statistical_tests.gini_coefficient.gini)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.performance.statistical_tests.gini.interpretation}
+                          {results.statistical_tests.gini_coefficient.interpretation}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={results.performance.statistical_tests.gini.status}
-                          color={getStatusColor(results.performance.statistical_tests.gini.status)}
+                          label={results.statistical_tests.gini_coefficient.status}
+                          color={getStatusColor(results.statistical_tests.gini_coefficient.status)}
                           size="small"
                         />
                       </Box>
@@ -258,30 +260,22 @@ const ValidationResults = ({ results }) => {
                     <TableCell align="right">Train</TableCell>
                     <TableCell align="right">Test</TableCell>
                     <TableCell align="right">OOT</TableCell>
-                    <TableCell align="center">Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {results.performance.metrics && Object.entries(results.performance.metrics).map(([key, value]) => (
-                    <TableRow key={key}>
+                  {['accuracy', 'precision', 'recall', 'f1_score', 'auc_roc'].map((metric) => (
+                    <TableRow key={metric}>
                       <TableCell component="th" scope="row">
-                        {key.replace(/_/g, ' ').toUpperCase()}
+                        {metric.replace(/_/g, ' ').toUpperCase()}
                       </TableCell>
                       <TableCell align="right">
-                        {formatNumber(value.train)}
+                        {formatNumber(results.performance.train?.[metric])}
                       </TableCell>
                       <TableCell align="right">
-                        {formatNumber(value.test)}
+                        {formatNumber(results.performance.test?.[metric])}
                       </TableCell>
                       <TableCell align="right">
-                        {formatNumber(value.oot)}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={value.status || 'OK'}
-                          color={getStatusColor(value.status)}
-                          size="small"
-                        />
+                        {formatNumber(results.performance.out_of_time?.[metric])}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -397,25 +391,28 @@ const ValidationResults = ({ results }) => {
                 <Box sx={{ flexGrow: 1 }}>
                   <LinearProgress
                     variant="determinate"
-                    value={results.compliance.overall_score || 0}
+                    value={results.compliance.compliance_score || 0}
                     sx={{ height: 10, borderRadius: 5 }}
-                    color={getStatusColor(results.compliance.status)}
+                    color={getStatusColor(results.compliance.overall_status)}
                   />
                 </Box>
                 <Typography variant="h5">
-                  {results.compliance.overall_score?.toFixed(1)}%
+                  {results.compliance.compliance_score?.toFixed(1)}%
                 </Typography>
               </Box>
               <Box sx={{ mt: 1 }}>
                 <Chip
-                  label={results.compliance.status}
-                  color={getStatusColor(results.compliance.status)}
+                  label={results.compliance.overall_status}
+                  color={getStatusColor(results.compliance.overall_status)}
                 />
               </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Categories Passed: {results.compliance.categories_passed} / 9
+              </Typography>
             </Box>
 
             {/* Compliance Categories */}
-            {results.compliance.categories && (
+            {results.compliance.category_scores && (
               <TableContainer>
                 <Table size="small">
                   <TableHead>
@@ -427,10 +424,10 @@ const ValidationResults = ({ results }) => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {Object.entries(results.compliance.categories).map(([category, data]) => (
+                    {Object.entries(results.compliance.category_scores).map(([category, data]) => (
                       <TableRow key={category}>
                         <TableCell component="th" scope="row">
-                          {category.replace(/_/g, ' ')}
+                          {category.replace(/_/g, ' ').toUpperCase()}
                         </TableCell>
                         <TableCell align="right">
                           {data.score?.toFixed(1)}%
@@ -456,16 +453,16 @@ const ValidationResults = ({ results }) => {
             {results.compliance.gaps && results.compliance.gaps.length > 0 && (
               <Box sx={{ mt: 3 }}>
                 <Typography variant="subtitle1" gutterBottom>
-                  Identified Gaps
+                  Identified Gaps ({results.compliance.gaps.length})
                 </Typography>
                 {results.compliance.gaps.map((gap, index) => (
                   <Alert severity="warning" key={index} sx={{ mb: 1 }}>
                     <Typography variant="body2">
-                      <strong>{gap.category}:</strong> {gap.description}
+                      <strong>{gap.category?.replace(/_/g, ' ').toUpperCase()}:</strong> {gap.description}
                     </Typography>
                     {gap.recommendation && (
                       <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                        Recommendation: {gap.recommendation}
+                        💡 Recommendation: {gap.recommendation}
                       </Typography>
                     )}
                   </Alert>
