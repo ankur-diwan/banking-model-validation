@@ -156,8 +156,9 @@ function App() {
 
   const handleDownloadDocument = async () => {
     try {
+      setError(null);
       const response = await axios.get(
-        `${API_BASE_URL}/api/v1/validate/${validationId}/document`,
+        `${API_BASE_URL}/api/download-report/${modelConfig.model_name}`,
         { responseType: 'blob' }
       );
       
@@ -168,8 +169,10 @@ function App() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError('Failed to download document');
+      console.error('Download error:', err);
+      setError('Failed to download document: ' + (err.response?.data?.detail || err.message));
     }
   };
 

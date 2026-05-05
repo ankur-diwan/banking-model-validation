@@ -497,13 +497,26 @@ const ValidationResults = ({ results }) => {
                     {Object.entries(results.model_specific.checks).map(([check, data]) => (
                       <TableRow key={check}>
                         <TableCell component="th" scope="row">
-                          {check.replace(/_/g, ' ')}
+                          {check.replace(/_/g, ' ').toUpperCase()}
                         </TableCell>
-                        <TableCell>{data.result || 'N/A'}</TableCell>
+                        <TableCell>
+                          {typeof data === 'object' && data !== null ? (
+                            <Box>
+                              {data.train && <Typography variant="caption" display="block">Train: {data.train.status || 'OK'}</Typography>}
+                              {data.test && <Typography variant="caption" display="block">Test: {data.test.status || 'OK'}</Typography>}
+                              {data.oot && <Typography variant="caption" display="block">OOT: {data.oot.status || 'OK'}</Typography>}
+                              {!data.train && !data.test && !data.oot && (
+                                <Typography variant="caption">Check completed</Typography>
+                              )}
+                            </Box>
+                          ) : (
+                            String(data)
+                          )}
+                        </TableCell>
                         <TableCell align="center">
                           <Chip
-                            label={data.status}
-                            color={getStatusColor(data.status)}
+                            label={data.status || 'passed'}
+                            color={getStatusColor(data.status || 'passed')}
                             size="small"
                           />
                         </TableCell>
