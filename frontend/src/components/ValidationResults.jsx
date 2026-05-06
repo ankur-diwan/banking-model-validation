@@ -159,7 +159,7 @@ const ValidationResults = ({ results }) => {
                   <Typography variant="subtitle2">Compliance</Typography>
                 </Box>
                 <Typography variant="h6">
-                  {results.compliance?.compliance_score
+                  {results.compliance?.compliance_score !== undefined && results.compliance?.compliance_score !== null
                     ? `${results.compliance.compliance_score.toFixed(1)}%`
                     : 'N/A'}
                 </Typography>

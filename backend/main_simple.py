@@ -98,7 +98,20 @@ def generate_sample_data(size: int, model_type: str):
 @app.get("/", response_model=HealthResponse)
 async def root():
     """Root endpoint - health check"""
-    return {"status": "healthy", "message": "Banking Model Validation API"}
+    from datetime import datetime
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "2.0.0-test",
+        "features": [
+            "Statistical Tests (KS, Gini, PSI, CSI)",
+            "Performance Validation",
+            "Model-Specific Validation",
+            "Stability Analysis",
+            "SR 11-7 Compliance Checking",
+            "Document Upload & Analysis"
+        ]
+    }
 
 # Document upload endpoint
 @app.post("/api/upload-documents")
@@ -410,7 +423,49 @@ async def get_validation_results(validation_id: str):
     if validation["status"] != "completed":
         raise HTTPException(status_code=400, detail="Validation not completed yet")
     
-    return validation["results"]
+    # Get results and model_config
+    results = validation["results"]
+    model_config = validation.get("model_config", {})
+    
+    # Create stability object from PSI data for frontend compatibility
+    test_stats = results.get("statistical_tests", {}).get("test", {})
+    psi_value = test_stats.get("psi", 0)
+    
+    # Determine stability status based on PSI
+    if psi_value < 0.1:
+        stability_status = "stable"
+    elif psi_value < 0.25:
+        stability_status = "moderate"
+    else:
+        stability_status = "unstable"
+    
+    stability = {
+        "overall_status": stability_status,  # Frontend expects this field
+        "status": stability_status,
+        "psi_analysis": {
+            "overall_psi": psi_value,
+            "status": stability_status
+        },
+        "overall_assessment": {
+            "status": stability_status,
+            "psi": psi_value
+        }
+    }
+    
+    # Add metadata for model type
+    metadata = {
+        "model_type": model_config.get("scorecard_type", "Application Scorecard"),
+        "product_type": model_config.get("product_type", ""),
+        "validation_date": validation.get("completed_at", "")
+    }
+    
+    # Return enhanced results with model_config, stability, and metadata
+    return {
+        **results,
+        "model_config": model_config,
+        "stability": stability,
+        "metadata": metadata
+    }
 
 @app.get("/api/v1/validate/{validation_id}/document")
 async def download_validation_document(validation_id: str):
