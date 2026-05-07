@@ -36,7 +36,7 @@ import './App.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-const steps = ['Upload Documents (Optional)', 'Select Model Configuration', 'Review & Submit', 'Validation Progress', 'Results'];
+const steps = ['Upload Model Documentation', 'Select Model Configuration', 'Review & Submit', 'Validation Progress', 'Results'];
 
 function App() {
   const [activeStep, setActiveStep] = useState(0);
@@ -200,11 +200,11 @@ function App() {
   const renderDocumentUpload = () => (
     <Box sx={{ mt: 3 }}>
       <Typography variant="h5" gutterBottom>
-        Upload Supporting Documents (Optional)
+        Upload Model Documentation (Required)
       </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
-        Upload model documentation, data dictionaries, or validation reports to enhance the validation process.
-        This step is optional - you can proceed without uploading documents.
+        Upload model documentation for SR 11-7 compliance validation. Model documentation is required to perform
+        comprehensive validation including conceptual soundness, data quality, assumptions, and regulatory compliance checks.
       </Typography>
 
       <DocumentUpload onDocumentsUploaded={handleDocumentsUploaded} />
@@ -212,7 +212,15 @@ function App() {
       {uploadedDocuments.length > 0 && (
         <Alert severity="success" sx={{ mt: 3 }}>
           <Typography variant="body2">
-            {uploadedDocuments.length} document(s) uploaded successfully. These will be analyzed during validation.
+            {uploadedDocuments.length} document(s) uploaded successfully. These will be analyzed for SR 11-7 compliance validation.
+          </Typography>
+        </Alert>
+      )}
+
+      {uploadedDocuments.length === 0 && (
+        <Alert severity="warning" sx={{ mt: 3 }}>
+          <Typography variant="body2">
+            <strong>Required:</strong> Please upload at least one model documentation file to proceed with SR 11-7 validation.
           </Typography>
         </Alert>
       )}
@@ -223,7 +231,7 @@ function App() {
         </Typography>
         <Typography variant="body2" sx={{ mt: 1 }}>
           <strong>What happens next:</strong> Uploaded documents will be analyzed to extract model information,
-          identify SR 11-7 sections, and enhance the validation process with additional context.
+          identify SR 11-7 sections, validate conceptual soundness, assess data quality, and check regulatory compliance.
         </Typography>
       </Alert>
     </Box>
@@ -471,8 +479,8 @@ function App() {
 
   const isStepValid = () => {
     if (activeStep === 0) {
-      // Document upload is optional, always valid
-      return true;
+      // Document upload is REQUIRED for SR 11-7 validation
+      return uploadedDocuments.length > 0;
     }
     if (activeStep === 1) {
       // Model configuration must be complete
