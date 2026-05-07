@@ -165,8 +165,15 @@ function App() {
   const handleDownloadDocument = async () => {
     try {
       setError(null);
+      
+      // Check if validationId is available
+      if (!validationId) {
+        setError('No validation ID available. Please run a validation first.');
+        return;
+      }
+      
       const response = await axios.get(
-        `${API_BASE_URL}/api/download-report/${modelConfig.model_name}`,
+        `${API_BASE_URL}/api/download-report/${validationId}`,
         { responseType: 'blob' }
       );
       
