@@ -780,12 +780,44 @@ async def validate_model(request: ValidationRequest):
         print(f"\n❌ Validation failed: {str(e)}\n")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/download-report/{model_name}")
-async def download_report(model_name: str):
+@app.get("/api/download-report/{validation_id}")
+async def download_report(validation_id: str):
     """
-    Generate and download validation report as Word document
+    Generate and download validation report as Word document - USES ACTUAL VALIDATION DATA
     """
     try:
+        # Get validation results from store
+        if validation_id not in validation_store:
+            raise HTTPException(status_code=404, detail="Validation not found")
+        
+        validation = validation_store[validation_id]
+        
+        if validation["status"] != "completed":
+            raise HTTPException(status_code=400, detail="Validation not completed yet")
+        
+        # Extract data from SAME sources as dashboard
+        model_config = validation["model_config"]
+        results = validation["results"]
+        
+        stats_train = results['statistical_tests']['train']
+        stats_test = results['statistical_tests']['test']
+        stats_oot = results['statistical_tests'].get('out_of_time', {})
+        
+        perf_train = results['performance']['train']
+        perf_test = results['performance']['test']
+        perf_oot = results['performance'].get('out_of_time', {})
+        
+        compliance = results['compliance']
+        
+        # Calculate overall status using SAME logic as dashboard
+        ks_pass = stats_test.get('ks_statistic', 0) >= 0.2
+        gini_pass = stats_test.get('gini_coefficient', 0) >= 0.3
+        psi_pass = stats_test.get('psi', 0) < 0.25
+        accuracy_pass = perf_test.get('accuracy', 0) >= 0.7
+        compliance_pass = compliance.get('overall_score', 0) >= 70
+        
+        overall_status = "PASS" if (ks_pass and gini_pass and psi_pass and accuracy_pass and compliance_pass) else "FAIL"
+        
         from docx import Document
         from docx.shared import Inches, Pt, RGBColor
         from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -800,8 +832,8 @@ async def download_report(model_name: str):
         
         # Add model information
         doc.add_heading('Model Information', level=1)
-        doc.add_paragraph(f'Model Name: {model_name}')
-        doc.add_paragraph(f'Validation Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+        doc.add_paragraph(f'Model Name: {model_config.get("model_name", "N/A")}')
+        doc.add_paragraph(f'Validation Date: {validation.get("completed_at", "N/A")}')
         doc.add_paragraph(f'Validation Framework: SR 11-7')
         
         # Add executive summary
@@ -811,6 +843,15 @@ async def download_report(model_name: str):
             'The validation was conducted following Federal Reserve SR 11-7 guidelines and includes '
             'statistical tests, performance metrics, stability analysis, and compliance assessment.'
         )
+        
+        # Add overall status
+        doc.add_heading('Overall Validation Status', level=1)
+        status_para = doc.add_paragraph(f'Status: {overall_status}')
+        if overall_status == "FAIL":
+            status_para.runs[0].font.color.rgb = RGBColor(255, 0, 0)
+        else:
+            status_para.runs[0].font.color.rgb = RGBColor(0, 128, 0)
+        doc.add_paragraph(f'Compliance Score: {compliance.get("overall_score", 0):.2f}%')
         
         # Add statistical tests section
         doc.add_heading('Statistical Tests', level=1)
@@ -824,12 +865,12 @@ async def download_report(model_name: str):
         hdr_cells[1].text = 'Value'
         hdr_cells[2].text = 'Status'
         
-        # Data rows
+        # Data rows - USE ACTUAL DATA FROM TEST DATASET
         tests = [
-            ('KS Statistic', '0.0758', 'Passed'),
-            ('Gini Coefficient', '0.0391', 'Passed'),
-            ('PSI', '0.0234', 'Stable'),
-            ('CSI', '0.0156', 'Stable')
+            ('KS Statistic', f'{stats_test.get("ks_statistic", 0):.4f}', 'Passed' if ks_pass else 'Failed'),
+            ('Gini Coefficient', f'{stats_test.get("gini_coefficient", 0):.4f}', 'Passed' if gini_pass else 'Failed'),
+            ('PSI', f'{stats_test.get("psi", 0):.4f}', 'Stable' if psi_pass else 'Unstable'),
+            ('CSI', f'{stats_test.get("csi", 0):.4f}', 'Stable')
         ]
         
         for idx, (test, value, status) in enumerate(tests, 1):
@@ -852,13 +893,13 @@ async def download_report(model_name: str):
         hdr[2].text = 'Test'
         hdr[3].text = 'OOT'
         
-        # Data
+        # Data - USE ACTUAL DATA
         metrics = [
-            ('Accuracy', '0.8523', '0.8456', '0.8389'),
-            ('Precision', '0.7234', '0.7156', '0.7089'),
-            ('Recall', '0.6845', '0.6778', '0.6712'),
-            ('F1 Score', '0.7034', '0.6956', '0.6889'),
-            ('AUC-ROC', '0.8912', '0.8845', '0.8778')
+            ('Accuracy', f'{perf_train.get("accuracy", 0):.4f}', f'{perf_test.get("accuracy", 0):.4f}', f'{perf_oot.get("accuracy", 0):.4f}'),
+            ('Precision', f'{perf_train.get("precision", 0):.4f}', f'{perf_test.get("precision", 0):.4f}', f'{perf_oot.get("precision", 0):.4f}'),
+            ('Recall', f'{perf_train.get("recall", 0):.4f}', f'{perf_test.get("recall", 0):.4f}', f'{perf_oot.get("recall", 0):.4f}'),
+            ('F1 Score', f'{perf_train.get("f1_score", 0):.4f}', f'{perf_test.get("f1_score", 0):.4f}', f'{perf_oot.get("f1_score", 0):.4f}'),
+            ('AUC-ROC', f'{perf_train.get("auc_roc", 0):.4f}', f'{perf_test.get("auc_roc", 0):.4f}', f'{perf_oot.get("auc_roc", 0):.4f}')
         ]
         
         for idx, (metric, train, test, oot) in enumerate(metrics, 1):
@@ -868,11 +909,11 @@ async def download_report(model_name: str):
             row[2].text = test
             row[3].text = oot
         
-        # Add compliance section
+        # Add compliance section - USE ACTUAL DATA
         doc.add_heading('SR 11-7 Compliance', level=1)
-        doc.add_paragraph(f'Overall Compliance Score: 85.5%')
-        doc.add_paragraph(f'Status: Compliant')
-        doc.add_paragraph(f'Categories Passed: 7/9')
+        doc.add_paragraph(f'Overall Compliance Score: {compliance.get("overall_score", 0):.2f}%')
+        doc.add_paragraph(f'Status: {compliance.get("overall_status", "N/A")}')
+        doc.add_paragraph(f'Categories Passed: {compliance.get("categories_passed", 0)}/{compliance.get("total_categories", 9)}')
         
         # Add recommendations
         doc.add_heading('Recommendations', level=1)
@@ -881,13 +922,20 @@ async def download_report(model_name: str):
         doc.add_paragraph('3. Implement automated drift detection for early warning')
         doc.add_paragraph('4. Conduct stress testing under adverse scenarios')
         
-        # Add conclusion
+        # Add conclusion - BASED ON ACTUAL STATUS
         doc.add_heading('Conclusion', level=1)
-        doc.add_paragraph(
-            'The model has passed all critical validation tests and meets SR 11-7 requirements. '
-            'The model demonstrates good predictive power, acceptable stability, and strong compliance '
-            'with regulatory guidelines. Continued monitoring is recommended to ensure ongoing performance.'
-        )
+        if overall_status == "PASS":
+            doc.add_paragraph(
+                'The model has passed all critical validation tests and meets SR 11-7 requirements. '
+                'The model demonstrates good predictive power, acceptable stability, and strong compliance '
+                'with regulatory guidelines. Continued monitoring is recommended to ensure ongoing performance.'
+            )
+        else:
+            doc.add_paragraph(
+                'The model has FAILED one or more critical validation tests. '
+                'Review the statistical tests and performance metrics sections above to identify specific failures. '
+                'Model improvements or recalibration may be required before deployment.'
+            )
         
         # Add footer
         doc.add_paragraph('\n' + '-' * 80)
@@ -900,6 +948,7 @@ async def download_report(model_name: str):
         doc_io.seek(0)
         
         from fastapi.responses import StreamingResponse
+        model_name = model_config.get("model_name", "model")
         return StreamingResponse(
             doc_io,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
