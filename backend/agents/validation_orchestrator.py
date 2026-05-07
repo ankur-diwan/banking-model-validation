@@ -268,20 +268,68 @@ class ValidationOrchestratorAgent:
             oot_data=datasets["out_of_time"]
         )
         
-        # Combine results
-        combined_results = {
-            "performance_metrics": perf_results,
-            "model_specific_validation": model_specific_results,
-            "statistical_tests": {
-                "ks_test": perf_results.get("statistical_tests", {}).get("ks_test", {}),
-                "gini": perf_results.get("statistical_tests", {}).get("gini", {})
+        # Extract statistical tests from dataset-level results
+        statistical_tests = {
+            "train": {
+                "ks_statistic": perf_results.get("train", {}).get("ks_test", {}).get("ks_statistic"),
+                "ks_details": perf_results.get("train", {}).get("ks_test", {}),
+                "gini_coefficient": perf_results.get("train", {}).get("gini_test", {}).get("gini_coefficient"),
+                "gini_details": perf_results.get("train", {}).get("gini_test", {})
             },
+            "test": {
+                "ks_statistic": perf_results.get("test", {}).get("ks_test", {}).get("ks_statistic"),
+                "ks_details": perf_results.get("test", {}).get("ks_test", {}),
+                "gini_coefficient": perf_results.get("test", {}).get("gini_test", {}).get("gini_coefficient"),
+                "gini_details": perf_results.get("test", {}).get("gini_test", {})
+            },
+            "out_of_time": {
+                "ks_statistic": perf_results.get("out_of_time", {}).get("ks_test", {}).get("ks_statistic"),
+                "ks_details": perf_results.get("out_of_time", {}).get("ks_test", {}),
+                "gini_coefficient": perf_results.get("out_of_time", {}).get("gini_test", {}).get("gini_coefficient"),
+                "gini_details": perf_results.get("out_of_time", {}).get("gini_test", {})
+            }
+        }
+        
+        # Extract performance metrics (accuracy, precision, etc.)
+        performance = {
+            "train": {
+                "accuracy": perf_results.get("train", {}).get("accuracy"),
+                "precision": perf_results.get("train", {}).get("precision"),
+                "recall": perf_results.get("train", {}).get("recall"),
+                "f1_score": perf_results.get("train", {}).get("f1_score"),
+                "auc_roc": perf_results.get("train", {}).get("auc_roc"),
+                "confusion_matrix": perf_results.get("train", {}).get("confusion_matrix")
+            },
+            "test": {
+                "accuracy": perf_results.get("test", {}).get("accuracy"),
+                "precision": perf_results.get("test", {}).get("precision"),
+                "recall": perf_results.get("test", {}).get("recall"),
+                "f1_score": perf_results.get("test", {}).get("f1_score"),
+                "auc_roc": perf_results.get("test", {}).get("auc_roc"),
+                "confusion_matrix": perf_results.get("test", {}).get("confusion_matrix")
+            },
+            "out_of_time": {
+                "accuracy": perf_results.get("out_of_time", {}).get("accuracy"),
+                "precision": perf_results.get("out_of_time", {}).get("precision"),
+                "recall": perf_results.get("out_of_time", {}).get("recall"),
+                "f1_score": perf_results.get("out_of_time", {}).get("f1_score"),
+                "auc_roc": perf_results.get("out_of_time", {}).get("auc_roc"),
+                "confusion_matrix": perf_results.get("out_of_time", {}).get("confusion_matrix")
+            }
+        }
+        
+        # Combine results with proper structure for frontend
+        combined_results = {
+            "performance_metrics": perf_results,  # Keep full results for reference
+            "performance": performance,  # Simplified structure for UI
+            "statistical_tests": statistical_tests,  # Extracted statistical tests
+            "model_specific_validation": model_specific_results,
             "validated_at": datetime.utcnow().isoformat()
         }
         
         # Log key metrics
-        ks_stat = perf_results.get("statistical_tests", {}).get("ks_test", {}).get("ks_statistic", "N/A")
-        gini_coef = perf_results.get("statistical_tests", {}).get("gini", {}).get("gini_coefficient", "N/A")
+        ks_stat = statistical_tests["train"].get("ks_statistic", "N/A")
+        gini_coef = statistical_tests["train"].get("gini_coefficient", "N/A")
         
         logger.info(f"Performance validation complete - KS: {ks_stat}, Gini: {gini_coef}")
         
