@@ -504,7 +504,7 @@ async def get_validation_results(validation_id: str):
 @app.get("/api/v1/validate/{validation_id}/document")
 async def download_validation_document(validation_id: str):
     """
-    Download validation report (v1 API)
+    Download validation report (v1 API) - ALIGNED WITH DASHBOARD DATA
     Returns a simple text file for now - DOCX generation can be added later
     """
     if validation_id not in validation_store:
@@ -515,9 +515,31 @@ async def download_validation_document(validation_id: str):
     if validation["status"] != "completed":
         raise HTTPException(status_code=400, detail="Validation not completed yet")
     
-    # Generate simple report content
+    # Generate simple report content using SAME data as dashboard
     model_config = validation["model_config"]
     results = validation["results"]
+    
+    # Extract data from SAME sources as dashboard (not summary)
+    stats_train = results['statistical_tests']['train']
+    stats_test = results['statistical_tests']['test']
+    stats_oot = results['statistical_tests'].get('out_of_time', {})
+    
+    perf_train = results['performance']['train']
+    perf_test = results['performance']['test']
+    perf_oot = results['performance'].get('out_of_time', {})
+    
+    compliance = results['compliance']
+    
+    # Determine overall status based on ACTUAL test results (same logic as dashboard)
+    # Check if key metrics pass thresholds
+    ks_pass = stats_test.get('ks_statistic', 0) >= 0.2
+    gini_pass = stats_test.get('gini_coefficient', 0) >= 0.3
+    psi_pass = stats_test.get('psi', 0) < 0.25
+    accuracy_pass = perf_test.get('accuracy', 0) >= 0.7
+    compliance_pass = compliance.get('overall_score', 0) >= 70
+    
+    # Overall status: PASS if all critical metrics pass
+    overall_status = "PASS" if (ks_pass and gini_pass and psi_pass and accuracy_pass and compliance_pass) else "FAIL"
     
     report_content = f"""
 BANKING MODEL VALIDATION REPORT
@@ -531,42 +553,67 @@ Model Type: {model_config.get('model_type', 'N/A')}
 
 Validation Date: {validation.get('completed_at', 'N/A')}
 
-SUMMARY
--------
-Overall Status: {results['summary']['overall_status']}
-KS Statistic: {results['summary']['ks_statistic']:.4f}
-Gini Coefficient: {results['summary']['gini_coefficient']:.4f}
-PSI: {results['summary']['psi']:.4f}
-Compliance Score: {results['summary']['compliance_score']:.2f}%
+OVERALL VALIDATION STATUS
+--------------------------
+Status: {overall_status}
+Compliance Score: {compliance.get('overall_score', 0):.2f}%
 
-STATISTICAL TESTS
------------------
-Test Dataset:
-  - KS Statistic: {results['statistical_tests']['test']['ks_statistic']:.4f}
-  - Gini Coefficient: {results['statistical_tests']['test']['gini_coefficient']:.4f}
-  - PSI: {results['statistical_tests']['test']['psi']:.4f}
-  - CSI: {results['statistical_tests']['test']['csi']:.4f}
+STATISTICAL TESTS - TRAIN DATASET
+----------------------------------
+  - KS Statistic: {stats_train.get('ks_statistic', 0):.4f} {'✓ PASS' if stats_train.get('ks_statistic', 0) >= 0.2 else '✗ FAIL'}
+  - Gini Coefficient: {stats_train.get('gini_coefficient', 0):.4f} {'✓ PASS' if stats_train.get('gini_coefficient', 0) >= 0.3 else '✗ FAIL'}
+  - PSI: {stats_train.get('psi', 0):.4f} {'✓ PASS' if stats_train.get('psi', 0) < 0.25 else '✗ FAIL'}
+  - CSI: {stats_train.get('csi', 0):.4f}
 
-PERFORMANCE METRICS
--------------------
-Test Dataset:
-  - Accuracy: {results['performance']['test']['accuracy']:.4f}
-  - Precision: {results['performance']['test']['precision']:.4f}
-  - Recall: {results['performance']['test']['recall']:.4f}
-  - F1 Score: {results['performance']['test']['f1_score']:.4f}
-  - AUC-ROC: {results['performance']['test']['auc_roc']:.4f}
+STATISTICAL TESTS - TEST DATASET
+---------------------------------
+  - KS Statistic: {stats_test.get('ks_statistic', 0):.4f} {'✓ PASS' if ks_pass else '✗ FAIL'}
+  - Gini Coefficient: {stats_test.get('gini_coefficient', 0):.4f} {'✓ PASS' if gini_pass else '✗ FAIL'}
+  - PSI: {stats_test.get('psi', 0):.4f} {'✓ PASS' if psi_pass else '✗ FAIL'}
+  - CSI: {stats_test.get('csi', 0):.4f}
 
-COMPLIANCE
-----------
-Overall Score: {results['compliance']['overall_score']:.2f}%
-Status: {results['compliance']['overall_status']}
+STATISTICAL TESTS - OUT-OF-TIME DATASET
+----------------------------------------
+  - KS Statistic: {stats_oot.get('ks_statistic', 0):.4f}
+  - Gini Coefficient: {stats_oot.get('gini_coefficient', 0):.4f}
+  - PSI: {stats_oot.get('psi', 0):.4f}
+  - CSI: {stats_oot.get('csi', 0):.4f}
+
+PERFORMANCE METRICS - TRAIN DATASET
+------------------------------------
+  - Accuracy: {perf_train.get('accuracy', 0):.4f} ({perf_train.get('accuracy', 0)*100:.2f}%)
+  - Precision: {perf_train.get('precision', 0):.4f}
+  - Recall: {perf_train.get('recall', 0):.4f}
+  - F1 Score: {perf_train.get('f1_score', 0):.4f}
+  - AUC-ROC: {perf_train.get('auc_roc', 0):.4f}
+
+PERFORMANCE METRICS - TEST DATASET
+-----------------------------------
+  - Accuracy: {perf_test.get('accuracy', 0):.4f} ({perf_test.get('accuracy', 0)*100:.2f}%) {'✓ PASS' if accuracy_pass else '✗ FAIL'}
+  - Precision: {perf_test.get('precision', 0):.4f}
+  - Recall: {perf_test.get('recall', 0):.4f}
+  - F1 Score: {perf_test.get('f1_score', 0):.4f}
+  - AUC-ROC: {perf_test.get('auc_roc', 0):.4f}
+
+PERFORMANCE METRICS - OUT-OF-TIME DATASET
+------------------------------------------
+  - Accuracy: {perf_oot.get('accuracy', 0):.4f} ({perf_oot.get('accuracy', 0)*100:.2f}%)
+  - Precision: {perf_oot.get('precision', 0):.4f}
+  - Recall: {perf_oot.get('recall', 0):.4f}
+  - F1 Score: {perf_oot.get('f1_score', 0):.4f}
+  - AUC-ROC: {perf_oot.get('auc_roc', 0):.4f}
+
+COMPLIANCE ASSESSMENT
+---------------------
+Overall Score: {compliance.get('overall_score', 0):.2f}% {'✓ PASS' if compliance_pass else '✗ FAIL'}
+Status: {compliance.get('overall_status', 'N/A')}
 
 Detailed Scores:
-  - Conceptual Soundness: {results['compliance']['detailed_scores']['conceptual_soundness']:.2f}%
-  - Data Quality: {results['compliance']['detailed_scores']['data_quality']:.2f}%
-  - Model Performance: {results['compliance']['detailed_scores']['model_performance']:.2f}%
-  - Model Assumptions: {results['compliance']['detailed_scores']['model_assumptions']:.2f}%
-  - Ongoing Monitoring: {results['compliance']['detailed_scores']['ongoing_monitoring']:.2f}%
+  - Conceptual Soundness: {compliance.get('detailed_scores', {}).get('conceptual_soundness', 0):.2f}%
+  - Data Quality: {compliance.get('detailed_scores', {}).get('data_quality', 0):.2f}%
+  - Model Performance: {compliance.get('detailed_scores', {}).get('model_performance', 0):.2f}%
+  - Model Assumptions: {compliance.get('detailed_scores', {}).get('model_assumptions', 0):.2f}%
+  - Ongoing Monitoring: {compliance.get('detailed_scores', {}).get('ongoing_monitoring', 0):.2f}%
 
 ---
 Generated by Banking Model Validation System v2.0.0
