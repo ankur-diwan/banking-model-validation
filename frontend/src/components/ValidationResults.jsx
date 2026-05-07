@@ -179,7 +179,7 @@ const ValidationResults = ({ results }) => {
       </Paper>
 
       {/* Statistical Tests */}
-      {results.statistical_tests && (
+      {(results.statistical_tests || results.performance?.statistical_tests) && (
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography variant="h6">📊 Statistical Tests</Typography>
@@ -187,9 +187,9 @@ const ValidationResults = ({ results }) => {
           <AccordionDetails>
             <Grid container spacing={2}>
               {/* KS Test */}
-              {results.statistical_tests.train && (
+              {(results.statistical_tests?.ks_test || results.performance?.statistical_tests?.ks_test) && (
                 <Grid item xs={12} md={6}>
-                  <Card>
+                  <Card sx={{ height: '100%' }}>
                     <CardContent>
                       <Typography variant="subtitle1" gutterBottom>
                         Kolmogorov-Smirnov (KS) Test
@@ -197,19 +197,31 @@ const ValidationResults = ({ results }) => {
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          KS Statistic (Train)
+                          KS Statistic
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(results.statistical_tests.train.ks_statistic)}
+                          {formatNumber(
+                            results.statistical_tests?.ks_test?.ks_statistic ||
+                            results.performance?.statistical_tests?.ks_test?.ks_statistic
+                          )}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests.train.interpretation}
+                          {results.statistical_tests?.ks_test?.interpretation ||
+                           results.performance?.statistical_tests?.ks_test?.interpretation ||
+                           'Measures separation between good and bad'}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={results.statistical_tests.train.status}
-                          color={getStatusColor(results.statistical_tests.train.status)}
+                          label={
+                            results.statistical_tests?.ks_test?.status ||
+                            results.performance?.statistical_tests?.ks_test?.status ||
+                            'N/A'
+                          }
+                          color={getStatusColor(
+                            results.statistical_tests?.ks_test?.status ||
+                            results.performance?.statistical_tests?.ks_test?.status
+                          )}
                           size="small"
                         />
                       </Box>
@@ -219,9 +231,9 @@ const ValidationResults = ({ results }) => {
               )}
 
               {/* Gini Coefficient */}
-              {results.statistical_tests.gini_coefficient && (
+              {(results.statistical_tests?.gini || results.performance?.statistical_tests?.gini) && (
                 <Grid item xs={12} md={6}>
-                  <Card>
+                  <Card sx={{ height: '100%' }}>
                     <CardContent>
                       <Typography variant="subtitle1" gutterBottom>
                         Gini Coefficient
@@ -232,16 +244,28 @@ const ValidationResults = ({ results }) => {
                           Gini Score
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(results.statistical_tests.gini_coefficient.gini)}
+                          {formatNumber(
+                            results.statistical_tests?.gini?.gini_coefficient ||
+                            results.performance?.statistical_tests?.gini?.gini_coefficient
+                          )}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests.gini_coefficient.interpretation}
+                          {results.statistical_tests?.gini?.interpretation ||
+                           results.performance?.statistical_tests?.gini?.interpretation ||
+                           'Measures model discrimination power'}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={results.statistical_tests.gini_coefficient.status}
-                          color={getStatusColor(results.statistical_tests.gini_coefficient.status)}
+                          label={
+                            results.statistical_tests?.gini?.status ||
+                            results.performance?.statistical_tests?.gini?.status ||
+                            'N/A'
+                          }
+                          color={getStatusColor(
+                            results.statistical_tests?.gini?.status ||
+                            results.performance?.statistical_tests?.gini?.status
+                          )}
                           size="small"
                         />
                       </Box>
