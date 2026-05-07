@@ -108,20 +108,23 @@ const ValidationResults = ({ results }) => {
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} md={3}>
-            <Card>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <Assessment color="primary" sx={{ mr: 1 }} />
                   <Typography variant="subtitle2">Model Type</Typography>
                 </Box>
-                <Typography variant="h6">
+                <Typography variant="h6" sx={{ textTransform: 'capitalize' }}>
                   {results.metadata?.model_type || results.model_specific?.model_type || 'N/A'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Scorecard Category
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={3}>
-            <Card>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <Speed color="success" sx={{ mr: 1 }} />
@@ -139,20 +142,23 @@ const ValidationResults = ({ results }) => {
             </Card>
           </Grid>
           <Grid item xs={12} md={3}>
-            <Card>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <TrendingUp color="info" sx={{ mr: 1 }} />
                   <Typography variant="subtitle2">Stability</Typography>
                 </Box>
-                <Typography variant="h6">
+                <Typography variant="h6" sx={{ textTransform: 'capitalize' }}>
                   {results.stability?.overall_status || 'N/A'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Overall Status
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={3}>
-            <Card>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <Security color="warning" sx={{ mr: 1 }} />
@@ -162,6 +168,9 @@ const ValidationResults = ({ results }) => {
                   {results.compliance?.compliance_score !== undefined && results.compliance?.compliance_score !== null
                     ? `${results.compliance.compliance_score.toFixed(1)}%`
                     : 'N/A'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  SR 11-7 Score
                 </Typography>
               </CardContent>
             </Card>
