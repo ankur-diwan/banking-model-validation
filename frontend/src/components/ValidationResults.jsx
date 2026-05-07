@@ -186,15 +186,14 @@ const ValidationResults = ({ results }) => {
       </Paper>
 
       {/* Statistical Tests */}
-      {(results.statistical_tests || results.performance?.statistical_tests || results.stability?.psi || results.stability?.csi) && (
-        <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="h6">📊 Statistical Tests</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={2}>
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography variant="h6">📊 Statistical Tests</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
               {/* KS Test */}
-              {(results.statistical_tests?.ks_test || results.performance?.statistical_tests?.ks_test) && (
+              {results.statistical_tests?.train?.ks_statistic !== undefined && (
                 <Grid item xs={12} md={6}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
@@ -204,32 +203,20 @@ const ValidationResults = ({ results }) => {
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          KS Statistic
+                          KS Statistic (Train)
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(
-                            results.statistical_tests?.ks_test?.ks_statistic ||
-                            results.performance?.statistical_tests?.ks_test?.ks_statistic
-                          )}
+                          {formatNumber(results.statistical_tests.train.ks_statistic)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests?.ks_test?.interpretation ||
-                           results.performance?.statistical_tests?.ks_test?.interpretation ||
+                          {results.statistical_tests.train.ks_details?.interpretation ||
                            'Measures separation between good and bad'}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={
-                            results.statistical_tests?.ks_test?.status ||
-                            results.performance?.statistical_tests?.ks_test?.status ||
-                            'Passed'
-                          }
-                          color={getStatusColor(
-                            results.statistical_tests?.ks_test?.status ||
-                            results.performance?.statistical_tests?.ks_test?.status ||
-                            'passed'
-                          )}
+                          label={results.statistical_tests.train.ks_details?.status || 'Passed'}
+                          color={getStatusColor(results.statistical_tests.train.ks_details?.status || 'passed')}
                           size="small"
                         />
                       </Box>
@@ -239,7 +226,7 @@ const ValidationResults = ({ results }) => {
               )}
 
               {/* Gini Coefficient */}
-              {(results.statistical_tests?.gini || results.performance?.statistical_tests?.gini) && (
+              {results.statistical_tests?.train?.gini_coefficient !== undefined && (
                 <Grid item xs={12} md={6}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
@@ -249,32 +236,20 @@ const ValidationResults = ({ results }) => {
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          Gini Score
+                          Gini Score (Train)
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(
-                            results.statistical_tests?.gini?.gini_coefficient ||
-                            results.performance?.statistical_tests?.gini?.gini_coefficient
-                          )}
+                          {formatNumber(results.statistical_tests.train.gini_coefficient)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests?.gini?.interpretation ||
-                           results.performance?.statistical_tests?.gini?.interpretation ||
+                          {results.statistical_tests.train.gini_details?.interpretation ||
                            'Measures model discrimination power'}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={
-                            results.statistical_tests?.gini?.status ||
-                            results.performance?.statistical_tests?.gini?.status ||
-                            'Passed'
-                          }
-                          color={getStatusColor(
-                            results.statistical_tests?.gini?.status ||
-                            results.performance?.statistical_tests?.gini?.status ||
-                            'passed'
-                          )}
+                          label={results.statistical_tests.train.gini_details?.status || 'Passed'}
+                          color={getStatusColor(results.statistical_tests.train.gini_details?.status || 'passed')}
                           size="small"
                         />
                       </Box>
@@ -284,7 +259,7 @@ const ValidationResults = ({ results }) => {
               )}
 
               {/* PSI Test */}
-              {results.stability?.psi && (
+              {results.statistical_tests?.train?.psi !== undefined && (
                 <Grid item xs={12} md={6}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
@@ -294,19 +269,19 @@ const ValidationResults = ({ results }) => {
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          PSI Score
+                          PSI Score (Train)
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(results.stability.psi.psi_score)}
+                          {formatNumber(results.statistical_tests.train.psi)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.stability.psi.interpretation || 'Measures population stability'}
+                          {results.statistical_tests.train.psi_details?.interpretation || 'Measures population stability'}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={results.stability.psi.status || 'Stable'}
-                          color={getStatusColor(results.stability.psi.status || 'stable')}
+                          label={results.statistical_tests.train.psi_details?.status || 'Stable'}
+                          color={getStatusColor(results.statistical_tests.train.psi_details?.status || 'stable')}
                           size="small"
                         />
                       </Box>
@@ -316,7 +291,7 @@ const ValidationResults = ({ results }) => {
               )}
 
               {/* CSI Test */}
-              {results.stability?.csi && (
+              {results.statistical_tests?.train?.csi !== undefined && (
                 <Grid item xs={12} md={6}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
@@ -326,19 +301,19 @@ const ValidationResults = ({ results }) => {
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          Average CSI
+                          Average CSI (Train)
                         </Typography>
                         <Typography variant="h5">
-                          {formatNumber(results.stability.csi.average_csi)}
+                          {formatNumber(results.statistical_tests.train.csi)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {results.stability.csi.interpretation || 'Measures characteristic stability'}
+                          {results.statistical_tests.train.csi_details?.overall_interpretation || 'Measures characteristic stability'}
                         </Typography>
                       </Box>
                       <Box sx={{ mt: 2 }}>
                         <Chip
-                          label={results.stability.csi.status || 'Stable'}
-                          color={getStatusColor(results.stability.csi.status || 'stable')}
+                          label={results.statistical_tests.train.csi_details?.overall_status || 'Stable'}
+                          color={getStatusColor(results.statistical_tests.train.csi_details?.overall_status || 'stable')}
                           size="small"
                         />
                       </Box>
@@ -349,7 +324,6 @@ const ValidationResults = ({ results }) => {
             </Grid>
           </AccordionDetails>
         </Accordion>
-      )}
 
       {/* Performance Metrics */}
       {results.performance && (

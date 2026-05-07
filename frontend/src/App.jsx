@@ -99,6 +99,14 @@ function App() {
   const fetchValidationResults = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/v1/validate/${validationId}/results`);
+      console.log('=== VALIDATION RESULTS FROM API ===');
+      console.log('Full response:', response.data);
+      console.log('statistical_tests:', response.data.statistical_tests);
+      console.log('performance:', response.data.performance);
+      console.log('performance.statistical_tests:', response.data.performance?.statistical_tests);
+      console.log('stability:', response.data.stability);
+      console.log('stability.psi:', response.data.stability?.psi);
+      console.log('stability.csi:', response.data.stability?.csi);
       setValidationResults(response.data);
       setActiveStep(4);
     } catch (err) {
