@@ -413,7 +413,7 @@ async def get_validation_status(validation_id: str):
 @app.get("/api/v1/validate/{validation_id}/results")
 async def get_validation_results(validation_id: str):
     """
-    Get validation results (v1 API)
+    Get validation results (v1 API) - Transformed for frontend compatibility
     """
     if validation_id not in validation_store:
         raise HTTPException(status_code=404, detail="Validation not found")
@@ -423,12 +423,42 @@ async def get_validation_results(validation_id: str):
     if validation["status"] != "completed":
         raise HTTPException(status_code=400, detail="Validation not completed yet")
     
-    # Get results and model_config
-    results = validation["results"]
+    # Get raw results and model_config
+    raw_results = validation["results"]
     model_config = validation.get("model_config", {})
     
-    # Create stability object from PSI data for frontend compatibility
-    test_stats = results.get("statistical_tests", {}).get("test", {})
+    # ===== FIX #1: Transform statistical_tests for frontend =====
+    # Frontend expects: results.statistical_tests.train.ks_statistic
+    statistical_tests = {}
+    for dataset_name in ["train", "test", "out_of_time"]:
+        dataset_stats = raw_results.get("statistical_tests", {}).get(dataset_name, {})
+        statistical_tests[dataset_name] = {
+            "ks_statistic": dataset_stats.get("ks_statistic"),
+            "ks_details": dataset_stats.get("ks_details", {}),
+            "gini_coefficient": dataset_stats.get("gini_coefficient"),
+            "gini_details": dataset_stats.get("gini_details", {}),
+            "psi": dataset_stats.get("psi"),
+            "psi_details": dataset_stats.get("psi_details", {}),
+            "csi": dataset_stats.get("csi"),
+            "csi_details": dataset_stats.get("csi_details", {})
+        }
+    
+    # ===== FIX #2: Transform performance metrics for frontend =====
+    # Frontend expects: results.performance.train.accuracy
+    performance = {}
+    for dataset_name in ["train", "test", "out_of_time"]:
+        dataset_perf = raw_results.get("performance", {}).get(dataset_name, {})
+        performance[dataset_name] = {
+            "accuracy": dataset_perf.get("accuracy"),
+            "precision": dataset_perf.get("precision"),
+            "recall": dataset_perf.get("recall"),
+            "f1_score": dataset_perf.get("f1_score"),
+            "auc_roc": dataset_perf.get("auc_roc"),
+            "confusion_matrix": dataset_perf.get("confusion_matrix", {})
+        }
+    
+    # ===== Create stability object from PSI data =====
+    test_stats = statistical_tests.get("test", {})
     psi_value = test_stats.get("psi", 0)
     
     # Determine stability status based on PSI
@@ -440,7 +470,7 @@ async def get_validation_results(validation_id: str):
         stability_status = "unstable"
     
     stability = {
-        "overall_status": stability_status,  # Frontend expects this field
+        "overall_status": stability_status,
         "status": stability_status,
         "psi_analysis": {
             "overall_psi": psi_value,
@@ -452,19 +482,23 @@ async def get_validation_results(validation_id: str):
         }
     }
     
-    # Add metadata for model type
+    # Add metadata
     metadata = {
         "model_type": model_config.get("scorecard_type", "Application Scorecard"),
         "product_type": model_config.get("product_type", ""),
         "validation_date": validation.get("completed_at", "")
     }
     
-    # Return enhanced results with model_config, stability, and metadata
+    # ===== Return transformed structure for frontend =====
     return {
-        **results,
-        "model_config": model_config,
+        "statistical_tests": statistical_tests,  # Transformed
+        "performance": performance,  # Transformed
+        "model_specific": raw_results.get("model_specific", {}),
+        "compliance": raw_results.get("compliance", {}),
         "stability": stability,
-        "metadata": metadata
+        "model_config": model_config,
+        "metadata": metadata,
+        "summary": raw_results.get("summary", {})  # Keep summary for backward compatibility
     }
 
 @app.get("/api/v1/validate/{validation_id}/document")
