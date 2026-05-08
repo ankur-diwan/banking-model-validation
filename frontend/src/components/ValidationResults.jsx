@@ -1,10 +1,6 @@
 /**
- * ValidationResults Component
- * Displays comprehensive validation results including:
- * - Statistical tests (KS, Gini, PSI, CSI)
- * - Performance metrics
- * - Compliance scores
- * - Model-specific validation results
+ * ValidationResults Component - Simplified and Error-Safe
+ * Displays comprehensive validation results
  */
 
 import React from 'react';
@@ -15,16 +11,8 @@ import {
   Grid,
   Card,
   CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
-  Divider,
   Alert,
-  LinearProgress,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -34,20 +22,12 @@ import {
   Warning,
   Error as ErrorIcon,
   ExpandMore,
-  TrendingUp,
-  Assessment,
-  Security,
-  Speed,
 } from '@mui/icons-material';
 
 const ValidationResults = ({ results }) => {
-  // Debug logging
-  console.log('=== ValidationResults Debug ===');
-  console.log('Full results object:', results);
-  console.log('results.statistical_tests:', results?.statistical_tests);
-  console.log('results.performance:', results?.performance);
-  console.log('results.performance?.statistical_tests:', results?.performance?.statistical_tests);
-  
+  console.log('=== ValidationResults Rendering ===');
+  console.log('Results:', results);
+
   if (!results) {
     return (
       <Alert severity="info">
@@ -56,134 +36,75 @@ const ValidationResults = ({ results }) => {
     );
   }
 
-  // Helper function to get status color
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'passed':
-      case 'compliant':
-      case 'stable':
-        return 'success';
-      case 'warning':
-      case 'moderate':
-        return 'warning';
-      case 'failed':
-      case 'non-compliant':
-      case 'unstable':
-        return 'error';
-      default:
-        return 'default';
+  // Safe accessor helper
+  const safeGet = (obj, path, defaultValue = 'N/A') => {
+    try {
+      const value = path.split('.').reduce((acc, part) => acc?.[part], obj);
+      return value !== undefined && value !== null ? value : defaultValue;
+    } catch (e) {
+      return defaultValue;
     }
   };
 
-  // Helper function to get status icon
-  const getStatusIcon = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'passed':
-      case 'compliant':
-      case 'stable':
-        return <CheckCircle />;
-      case 'warning':
-      case 'moderate':
-        return <Warning />;
-      case 'failed':
-      case 'non-compliant':
-      case 'unstable':
-        return <ErrorIcon />;
-      default:
-        return null;
-    }
+  // Format number safely
+  const formatNumber = (value, decimals = 4) => {
+    if (value === null || value === undefined || isNaN(value)) return 'N/A';
+    return Number(value).toFixed(decimals);
   };
 
-  // Format percentage
+  // Format percentage safely
   const formatPercent = (value) => {
-    if (value === null || value === undefined) return 'N/A';
+    if (value === null || value === undefined || isNaN(value)) return 'N/A';
     return `${(value * 100).toFixed(2)}%`;
   };
 
-  // Format number
-  const formatNumber = (value, decimals = 4) => {
-    if (value === null || value === undefined) return 'N/A';
-    return typeof value === 'number' ? value.toFixed(decimals) : value;
+  // Get status color
+  const getStatusColor = (status) => {
+    const statusLower = String(status).toLowerCase();
+    if (statusLower.includes('pass') || statusLower.includes('stable')) return 'success';
+    if (statusLower.includes('warn') || statusLower.includes('moderate')) return 'warning';
+    if (statusLower.includes('fail') || statusLower.includes('unstable')) return 'error';
+    return 'default';
   };
 
   return (
-    <Box>
+    <Box sx={{ mt: 3 }}>
       {/* Overall Summary */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Validation Summary
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Assessment color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle2">Model Type</Typography>
-                </Box>
-                <Typography variant="h6" sx={{ textTransform: 'capitalize' }}>
-                  {results.metadata?.model_type || results.model_specific?.model_type || 'N/A'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Scorecard Category
-                </Typography>
-              </CardContent>
-            </Card>
+      <Card sx={{ mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom>
+            Validation Summary
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2">Overall Status</Typography>
+              <Chip
+                label={safeGet(results, 'summary.overall_status', 'UNKNOWN')}
+                color={getStatusColor(safeGet(results, 'summary.overall_status'))}
+                sx={{ mt: 1 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2">KS Statistic</Typography>
+              <Typography variant="h6">
+                {formatNumber(safeGet(results, 'summary.ks_statistic', 0))}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2">Gini Coefficient</Typography>
+              <Typography variant="h6">
+                {formatNumber(safeGet(results, 'summary.gini_coefficient', 0))}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2">Compliance Score</Typography>
+              <Typography variant="h6">
+                {formatNumber(safeGet(results, 'summary.compliance_score', 0), 2)}%
+              </Typography>
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Speed color="success" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle2">Performance</Typography>
-                </Box>
-                <Typography variant="h6">
-                  {results.performance?.train?.accuracy
-                    ? `${(results.performance.train.accuracy * 100).toFixed(1)}%`
-                    : 'N/A'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Train Accuracy
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <TrendingUp color="info" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle2">Stability</Typography>
-                </Box>
-                <Typography variant="h6" sx={{ textTransform: 'capitalize' }}>
-                  {results.stability?.overall_status || 'N/A'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Overall Status
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Security color="warning" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle2">Compliance</Typography>
-                </Box>
-                <Typography variant="h6">
-                  {results.compliance?.compliance_score !== undefined && results.compliance?.compliance_score !== null
-                    ? `${results.compliance.compliance_score.toFixed(1)}%`
-                    : 'N/A'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  SR 11-7 Score
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </Paper>
+        </CardContent>
+      </Card>
 
       {/* Statistical Tests */}
       <Accordion defaultExpanded>
@@ -192,420 +113,202 @@ const ValidationResults = ({ results }) => {
         </AccordionSummary>
         <AccordionDetails>
           <Grid container spacing={2}>
-              {/* KS Test */}
-              {results.statistical_tests?.train?.ks_statistic !== undefined && (
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Kolmogorov-Smirnov (KS) Test
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          KS Statistic (Train)
-                        </Typography>
-                        <Typography variant="h5">
-                          {formatNumber(results.statistical_tests.train.ks_statistic)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests.train.ks_details?.interpretation ||
-                           'Measures separation between good and bad'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <Chip
-                          label={results.statistical_tests.train.ks_details?.status || 'Passed'}
-                          color={getStatusColor(results.statistical_tests.train.ks_details?.status || 'passed')}
-                          size="small"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* Gini Coefficient */}
-              {results.statistical_tests?.train?.gini_coefficient !== undefined && (
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Gini Coefficient
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Gini Score (Train)
-                        </Typography>
-                        <Typography variant="h5">
-                          {formatNumber(results.statistical_tests.train.gini_coefficient)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests.train.gini_details?.interpretation ||
-                           'Measures model discrimination power'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <Chip
-                          label={results.statistical_tests.train.gini_details?.status || 'Passed'}
-                          color={getStatusColor(results.statistical_tests.train.gini_details?.status || 'passed')}
-                          size="small"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* PSI Test */}
-              {results.statistical_tests?.train?.psi !== undefined && (
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Population Stability Index (PSI)
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          PSI Score (Train)
-                        </Typography>
-                        <Typography variant="h5">
-                          {formatNumber(results.statistical_tests.train.psi)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests.train.psi_details?.interpretation || 'Measures population stability'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <Chip
-                          label={results.statistical_tests.train.psi_details?.status || 'Stable'}
-                          color={getStatusColor(results.statistical_tests.train.psi_details?.status || 'stable')}
-                          size="small"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* CSI Test */}
-              {results.statistical_tests?.train?.csi !== undefined && (
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Characteristic Stability Index (CSI)
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Average CSI (Train)
-                        </Typography>
-                        <Typography variant="h5">
-                          {formatNumber(results.statistical_tests.train.csi)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {results.statistical_tests.train.csi_details?.overall_interpretation || 'Measures characteristic stability'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <Chip
-                          label={results.statistical_tests.train.csi_details?.overall_status || 'Stable'}
-                          color={getStatusColor(results.statistical_tests.train.csi_details?.overall_status || 'stable')}
-                          size="small"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
+            {/* Train Dataset */}
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Train Dataset
+                  </Typography>
+                  <Typography variant="body2">
+                    KS: {formatNumber(safeGet(results, 'statistical_tests.train.ks_statistic', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    Gini: {formatNumber(safeGet(results, 'statistical_tests.train.gini_coefficient', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    PSI: {formatNumber(safeGet(results, 'statistical_tests.train.psi', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    CSI: {formatNumber(safeGet(results, 'statistical_tests.train.csi', 0))}
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
-          </AccordionDetails>
-        </Accordion>
+
+            {/* Test Dataset */}
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Test Dataset
+                  </Typography>
+                  <Typography variant="body2">
+                    KS: {formatNumber(safeGet(results, 'statistical_tests.test.ks_statistic', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    Gini: {formatNumber(safeGet(results, 'statistical_tests.test.gini_coefficient', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    PSI: {formatNumber(safeGet(results, 'statistical_tests.test.psi', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    CSI: {formatNumber(safeGet(results, 'statistical_tests.test.csi', 0))}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* OOT Dataset */}
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Out-of-Time
+                  </Typography>
+                  <Typography variant="body2">
+                    KS: {formatNumber(safeGet(results, 'statistical_tests.out_of_time.ks_statistic', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    Gini: {formatNumber(safeGet(results, 'statistical_tests.out_of_time.gini_coefficient', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    PSI: {formatNumber(safeGet(results, 'statistical_tests.out_of_time.psi', 0))}
+                  </Typography>
+                  <Typography variant="body2">
+                    CSI: {formatNumber(safeGet(results, 'statistical_tests.out_of_time.csi', 0))}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
 
       {/* Performance Metrics */}
-      {results.performance && (
-        <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="h6">📈 Performance Metrics</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Metric</TableCell>
-                    <TableCell align="right">Train</TableCell>
-                    <TableCell align="right">Test</TableCell>
-                    <TableCell align="right">OOT</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {['accuracy', 'precision', 'recall', 'f1_score', 'auc_roc'].map((metric) => (
-                    <TableRow key={metric}>
-                      <TableCell component="th" scope="row">
-                        {metric.replace(/_/g, ' ').toUpperCase()}
-                      </TableCell>
-                      <TableCell align="right">
-                        {formatNumber(results.performance.train?.[metric])}
-                      </TableCell>
-                      <TableCell align="right">
-                        {formatNumber(results.performance.test?.[metric])}
-                      </TableCell>
-                      <TableCell align="right">
-                        {formatNumber(results.performance.out_of_time?.[metric])}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </AccordionDetails>
-        </Accordion>
-      )}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography variant="h6">📈 Performance Metrics</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            {['train', 'test', 'out_of_time'].map((dataset) => (
+              <Grid item xs={12} md={4} key={dataset}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="subtitle1" gutterBottom>
+                      {dataset === 'out_of_time' ? 'Out-of-Time' : dataset.charAt(0).toUpperCase() + dataset.slice(1)}
+                    </Typography>
+                    <Typography variant="body2">
+                      Accuracy: {formatPercent(safeGet(results, `performance.${dataset}.accuracy`, 0))}
+                    </Typography>
+                    <Typography variant="body2">
+                      Precision: {formatPercent(safeGet(results, `performance.${dataset}.precision`, 0))}
+                    </Typography>
+                    <Typography variant="body2">
+                      Recall: {formatPercent(safeGet(results, `performance.${dataset}.recall`, 0))}
+                    </Typography>
+                    <Typography variant="body2">
+                      F1 Score: {formatPercent(safeGet(results, `performance.${dataset}.f1_score`, 0))}
+                    </Typography>
+                    <Typography variant="body2">
+                      AUC-ROC: {formatNumber(safeGet(results, `performance.${dataset}.auc_roc`, 0))}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
 
-      {/* Stability Analysis */}
-      {results.stability && (
-        <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="h6">🔄 Stability Analysis</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={2}>
-              {/* PSI */}
-              {results.stability.psi && (
-                <Grid item xs={12} md={6}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Population Stability Index (PSI)
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          PSI Score
-                        </Typography>
-                        <Typography variant="h5">
-                          {formatNumber(results.stability.psi.psi_score)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {results.stability.psi.interpretation}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min(results.stability.psi.psi_score * 100, 100)}
-                          color={getStatusColor(results.stability.psi.status)}
-                        />
-                      </Box>
-                      <Box sx={{ mt: 1 }}>
-                        <Chip
-                          label={results.stability.psi.status}
-                          color={getStatusColor(results.stability.psi.status)}
-                          size="small"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* CSI */}
-              {results.stability.csi && (
-                <Grid item xs={12} md={6}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Characteristic Stability Index (CSI)
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Average CSI
-                        </Typography>
-                        <Typography variant="h5">
-                          {formatNumber(results.stability.csi.average_csi)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {results.stability.csi.interpretation}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min(results.stability.csi.average_csi * 100, 100)}
-                          color={getStatusColor(results.stability.csi.status)}
-                        />
-                      </Box>
-                      <Box sx={{ mt: 1 }}>
-                        <Chip
-                          label={results.stability.csi.status}
-                          color={getStatusColor(results.stability.csi.status)}
-                          size="small"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-      )}
-
-      {/* SR 11-7 Compliance */}
-      {results.compliance && (
-        <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="h6">✅ SR 11-7 Compliance</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                Overall Compliance Score
+      {/* Compliance */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography variant="h6">✅ SR 11-7 Compliance</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box>
+            <Alert severity={getStatusColor(safeGet(results, 'compliance.overall_status'))} sx={{ mb: 2 }}>
+              <Typography variant="body1">
+                <strong>Status:</strong> {safeGet(results, 'compliance.overall_status', 'Unknown')}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ flexGrow: 1 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={results.compliance.compliance_score || 0}
-                    sx={{ height: 10, borderRadius: 5 }}
-                    color={getStatusColor(results.compliance.overall_status)}
-                  />
-                </Box>
-                <Typography variant="h5">
-                  {results.compliance.compliance_score?.toFixed(1)}%
+              <Typography variant="body1">
+                <strong>Score:</strong> {formatNumber(safeGet(results, 'compliance.compliance_score', 0), 2)}%
+              </Typography>
+              <Typography variant="body1">
+                <strong>SR 11-7 Compliant:</strong> {safeGet(results, 'compliance.sr_11_7_compliant', false) ? 'Yes' : 'No'}
+              </Typography>
+            </Alert>
+
+            {/* Detailed Checks */}
+            {results.compliance?.detailed_checks && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Detailed Checks
                 </Typography>
-              </Box>
-              <Box sx={{ mt: 1 }}>
-                <Chip
-                  label={results.compliance.overall_status}
-                  color={getStatusColor(results.compliance.overall_status)}
-                />
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Categories Passed: {results.compliance.categories_passed} / 9
-              </Typography>
-            </Box>
-
-            {/* Compliance Categories */}
-            {results.compliance.category_scores && (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Category</TableCell>
-                      <TableCell align="right">Score</TableCell>
-                      <TableCell align="right">Weight</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Object.entries(results.compliance.category_scores).map(([category, data]) => (
-                      <TableRow key={category}>
-                        <TableCell component="th" scope="row">
-                          {category.replace(/_/g, ' ').toUpperCase()}
-                        </TableCell>
-                        <TableCell align="right">
-                          {data.score?.toFixed(1)}%
-                        </TableCell>
-                        <TableCell align="right">
-                          {data.weight?.toFixed(0)}%
-                        </TableCell>
-                        <TableCell align="center">
+                <Grid container spacing={1}>
+                  {Object.entries(results.compliance.detailed_checks).map(([key, check]) => (
+                    <Grid item xs={12} sm={6} md={4} key={key}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="body2" gutterBottom>
+                            {check.description || key}
+                          </Typography>
                           <Chip
-                            label={data.status}
-                            color={getStatusColor(data.status)}
+                            label={check.status || 'Unknown'}
+                            color={getStatusColor(check.status)}
                             size="small"
                           />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                            Score: {formatNumber(check.score || 0, 2)} / {check.weight || 0}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
             )}
 
-            {/* Gaps */}
-            {results.compliance.gaps && results.compliance.gaps.length > 0 && (
+            {/* Recommendations */}
+            {results.compliance?.recommendations && results.compliance.recommendations.length > 0 && (
               <Box sx={{ mt: 3 }}>
                 <Typography variant="subtitle1" gutterBottom>
-                  Identified Gaps ({results.compliance.gaps.length})
+                  Recommendations
                 </Typography>
-                {results.compliance.gaps.map((gap, index) => (
-                  <Alert severity="warning" key={index} sx={{ mb: 1 }}>
-                    <Typography variant="body2">
-                      <strong>{gap.category?.replace(/_/g, ' ').toUpperCase()}:</strong> {gap.description}
-                    </Typography>
-                    {gap.recommendation && (
-                      <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                        💡 Recommendation: {gap.recommendation}
-                      </Typography>
-                    )}
+                {results.compliance.recommendations.map((rec, idx) => (
+                  <Alert severity="info" key={idx} sx={{ mb: 1 }}>
+                    {rec}
                   </Alert>
                 ))}
               </Box>
             )}
-          </AccordionDetails>
-        </Accordion>
-      )}
+          </Box>
+        </AccordionDetails>
+      </Accordion>
 
-      {/* Model-Specific Validation */}
+      {/* Model Specific */}
       {results.model_specific && (
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography variant="h6">🎯 Model-Specific Validation</Typography>
           </AccordionSummary>
           <AccordionDetails>
-            <Typography variant="body2" paragraph>
-              Model Type: <strong>{results.model_specific.model_type}</strong>
+            <Typography variant="body2">
+              <strong>Validation Type:</strong> {safeGet(results, 'model_specific.validation_type', 'N/A')}
             </Typography>
-            {results.model_specific.checks && (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Check</TableCell>
-                      <TableCell>Result</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Object.entries(results.model_specific.checks).map(([check, data]) => (
-                      <TableRow key={check}>
-                        <TableCell component="th" scope="row">
-                          {check.replace(/_/g, ' ').toUpperCase()}
-                        </TableCell>
-                        <TableCell>
-                          {typeof data === 'object' && data !== null ? (
-                            <Box>
-                              {data.train && <Typography variant="caption" display="block">Train: {data.train.status || 'OK'}</Typography>}
-                              {data.test && <Typography variant="caption" display="block">Test: {data.test.status || 'OK'}</Typography>}
-                              {data.oot && <Typography variant="caption" display="block">OOT: {data.oot.status || 'OK'}</Typography>}
-                              {!data.train && !data.test && !data.oot && (
-                                <Typography variant="caption">Check completed</Typography>
-                              )}
-                            </Box>
-                          ) : (
-                            String(data)
-                          )}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={data.status || 'passed'}
-                            color={getStatusColor(data.status || 'passed')}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+            <Typography variant="body2">
+              <strong>Use Case:</strong> {safeGet(results, 'model_specific.use_case', 'N/A')}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Status:</strong>{' '}
+              <Chip
+                label={safeGet(results, 'model_specific.status', 'Unknown')}
+                color={getStatusColor(safeGet(results, 'model_specific.status'))}
+                size="small"
+              />
+            </Typography>
           </AccordionDetails>
         </Accordion>
       )}
@@ -614,7 +317,5 @@ const ValidationResults = ({ results }) => {
 };
 
 export default ValidationResults;
-
-// Made with ❤️ by Bob
 
 // Made with Bob
