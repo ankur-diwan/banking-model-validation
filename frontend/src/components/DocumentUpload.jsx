@@ -167,6 +167,11 @@ const DocumentUpload = ({ onDocumentsUploaded, onError }) => {
         }
       );
 
+      // DEBUG: Log upload response
+      console.log('[DOCUPLOAD DEBUG] Upload response received:', response.data);
+      console.log('[DOCUPLOAD DEBUG] Documents:', response.data.documents);
+      console.log('[DOCUPLOAD DEBUG] Datasets:', response.data.datasets);
+
       // Update file statuses
       setFiles(prev =>
         prev.map(f => ({
@@ -177,7 +182,8 @@ const DocumentUpload = ({ onDocumentsUploaded, onError }) => {
       );
 
       if (onDocumentsUploaded) {
-        onDocumentsUploaded(response.data.documents || []);
+        // Backend returns 'documents' array, not 'files'
+        onDocumentsUploaded(response.data.documents || [], response.data.datasets || null);
       }
     } catch (error) {
       const errorMessage = error.response?.data?.detail || 'Failed to upload files';

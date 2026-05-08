@@ -150,13 +150,28 @@ class PerformanceValidator:
             
             # Basic statistics
             y_true = data[target_column].values
-            y_pred_proba = data[score_column].values
+            y_scores_raw = data[score_column].values
             
             metrics["target_rate"] = round(float(y_true.mean()), 4)
-            metrics["score_mean"] = round(float(y_pred_proba.mean()), 4)
-            metrics["score_std"] = round(float(y_pred_proba.std()), 4)
+            metrics["score_mean"] = round(float(y_scores_raw.mean()), 4)
+            metrics["score_std"] = round(float(y_scores_raw.std()), 4)
             
-            # Binary classification metrics (using 0.5 threshold)
+            # Normalize scores to 0-1 range and invert
+            # Higher credit score = lower risk = lower probability of default
+            # So we need to invert: high score -> low probability of being bad (target=1)
+            score_min = y_scores_raw.min()
+            score_max = y_scores_raw.max()
+            
+            if score_max > score_min:
+                # Normalize to 0-1
+                y_scores_normalized = (y_scores_raw - score_min) / (score_max - score_min)
+                # Invert: high score -> low probability of default
+                y_pred_proba = 1 - y_scores_normalized
+            else:
+                # All scores are the same, use 0.5
+                y_pred_proba = np.full_like(y_scores_raw, 0.5)
+            
+            # Binary classification metrics (using 0.5 threshold on probability)
             y_pred_binary = (y_pred_proba >= 0.5).astype(int)
             
             # Confusion Matrix

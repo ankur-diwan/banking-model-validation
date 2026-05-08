@@ -42,6 +42,11 @@ function App() {
   const [activeStep, setActiveStep] = useState(0);
   const [options, setOptions] = useState(null);
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
+  const [uploadedDatasets, setUploadedDatasets] = useState(() => {
+    // Initialize from localStorage if available
+    const saved = localStorage.getItem('uploadedDatasets');
+    return saved ? JSON.parse(saved) : null;
+  }); // Store CSV dataset paths
   const [modelConfig, setModelConfig] = useState({
     model_name: '',
     product_type: '',
@@ -60,6 +65,14 @@ function App() {
   useEffect(() => {
     fetchOptions();
   }, []);
+
+  // Persist uploadedDatasets to localStorage whenever it changes
+  useEffect(() => {
+    if (uploadedDatasets) {
+      localStorage.setItem('uploadedDatasets', JSON.stringify(uploadedDatasets));
+      console.log('✅ Saved uploadedDatasets to localStorage:', uploadedDatasets);
+    }
+  }, [uploadedDatasets]);
 
   useEffect(() => {
     if (validationId && activeStep === 3) {
@@ -144,12 +157,23 @@ function App() {
     setError(null);
     
     try {
-      console.log('Starting validation with config:', modelConfig);
-      const response = await axios.post(`${API_BASE_URL}/api/v1/validate`, {
+      const requestPayload = {
         model_config: modelConfig,
         generate_document: true,
         register_governance: true
-      });
+      };
+      
+      // Add uploaded CSV file paths if available
+      if (uploadedDatasets && Object.keys(uploadedDatasets).length > 0) {
+        requestPayload.uploaded_files = {
+          datasets: uploadedDatasets
+        };
+        console.log('Including uploaded datasets in validation request:', uploadedDatasets);
+      } else {
+        console.log('No uploaded datasets found, backend will use sample data');
+      }
+      
+      const response = await axios.post(`${API_BASE_URL}/api/v1/validate`, requestPayload);
       
       console.log('Validation started:', response.data);
       setValidationId(response.data.validation_id);
@@ -191,8 +215,20 @@ function App() {
     }
   };
 
-  const handleDocumentsUploaded = (documents) => {
+  const handleDocumentsUploaded = (documents, datasets) => {
+    console.log('[UPLOAD DEBUG] Documents uploaded:', documents);
+    console.log('[UPLOAD DEBUG] Datasets mapped:', datasets);
+    console.log('[UPLOAD DEBUG] Timestamp:', new Date().toISOString());
+    
     setUploadedDocuments(documents);
+    setUploadedDatasets(datasets);
+    
+    // VISIBLE DEBUG: Show alert with datasets info
+    if (datasets && Object.keys(datasets).length > 0) {
+      alert(`✅ Datasets uploaded successfully!\nTrain: ${datasets.train ? '✓' : '✗'}\nTest: ${datasets.test ? '✓' : '✗'}\nOOT: ${datasets.oot ? '✓' : '✗'}`);
+    } else {
+      alert('⚠️ WARNING: No datasets were mapped from upload response!');
+    }
   };
 
   const renderStepContent = (step) => {
